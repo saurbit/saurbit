@@ -5,7 +5,7 @@ A monorepo for developing and maintaining modular, reusable **backend** packages
 ## Structure
 
 ```
-den/
+saurbit/
 ├── packages/    # Deno packages (each with its own deno.json)
 ├── examples/    # Standalone usage examples
 ├── deno.json    # Workspace root config
