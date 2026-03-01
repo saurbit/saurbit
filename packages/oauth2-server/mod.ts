@@ -61,6 +61,13 @@ export type {
   AuthCredentials,
   StrategyResult,
   UserCredentials,
-  StrategyOptions 
+  StrategyOptions
 } from "./src/strategy.ts";
-export { evaluateStrategy } from "./src/strategy.ts";
+export { 
+  evaluateStrategy,
+  StrategyInvalidTokenError,
+  StrategyJwtVerificationError,
+  StrategyInvalidTokenTypeError,
+  StrategyInternalError,
+  StrategyError 
+ } from "./src/strategy.ts";

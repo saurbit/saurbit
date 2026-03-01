@@ -2,6 +2,50 @@ import type { JwtPayload, JwtVerifier } from "./utils/jwt_authority.ts";
 import type { TokenType } from "./token_types/types.ts";
 
 /**
+ * Base class for all strategy errors.
+ */
+export abstract class StrategyError extends Error {
+  abstract readonly status: 401 | 500;
+  constructor(message?: string) {
+    super(message);
+    this.name = this.constructor.name;
+  }
+}
+
+/**
+ * Returned when the Authorization header is missing or has an invalid token type prefix.
+ */
+export class StrategyInvalidTokenTypeError extends StrategyError {
+  readonly status = 401 as const;
+}
+
+/**
+ * Returned when the token format/value is invalid.
+ */
+export class StrategyInvalidTokenError extends StrategyError {
+  readonly status = 401 as const;
+}
+
+/**
+ * Returned when JWT verification fails.
+ */
+export class StrategyJwtVerificationError extends StrategyError {
+  readonly status = 401 as const;
+}
+
+/**
+ * Returned when the verifyToken callback rejects unexpectedly.
+ */
+export class StrategyInternalError extends StrategyError {
+  readonly status = 500 as const;
+  override readonly cause: unknown;
+  constructor(cause: unknown) {
+    super(`${cause}`);
+    this.cause = cause;
+  }
+}
+
+/**
  * User extensible types user credentials.
  */
 // deno-lint-ignore no-empty-interface
@@ -52,7 +96,7 @@ export interface StrategyOptions {
 
 export type StrategyResult =
     | { success: true; credentials: AuthCredentials }
-    | { success: false; status: 401 | 500; message?: string };
+    | { success: false; error: StrategyError };
 
 const HEADER = "Authorization";
 
@@ -68,12 +112,12 @@ export async function evaluateStrategy(
     const [tokenType, token = ''] = authorization ? authorization.split(/\s+/) : ["", ""];
 
     if (tokenType?.toLowerCase() !== options.tokenType.prefix.toLowerCase()) {
-        return { success: false, status: 401, message: "Invalid token type" };
+        return { success: false, error: new StrategyInvalidTokenTypeError() };
     }
 
     const tokenValidation = await options.tokenType.isValid(request, token);
     if (!tokenValidation.isValid) {
-        return { success: false, status: 401, message: tokenValidation.message };
+        return { success: false, error: new StrategyInvalidTokenError(tokenValidation.message) };
     }
 
     let jwtAccessTokenPayload: JwtPayload | undefined;
@@ -81,7 +125,7 @@ export async function evaluateStrategy(
         try {
             jwtAccessTokenPayload = await options.jwtVerifier.verify(token);
         } catch {
-            return { success: false, status: 401, message: "JWT verification failed" };
+            return { success: false, error: new StrategyJwtVerificationError("JWT verification failed") };
         }
     }
 
@@ -91,11 +135,11 @@ export async function evaluateStrategy(
             if (result?.isValid && result.credentials) {
                 return { success: true, credentials: result.credentials };
             }
-            return { success: false, status: 401, message: result?.message };
+            return { success: false, error: new StrategyInvalidTokenError(result?.message) };
         } catch (err) {
-            return { success: false, status: 500, message: `${err}` };
+            return { success: false, error: new StrategyInternalError(err) };
         }
     }
 
-    return { success: false, status: 401 };
+    return { success: false, error: new StrategyInvalidTokenError() };
 }
