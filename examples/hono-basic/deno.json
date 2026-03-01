@@ -1,8 +1,13 @@
 {
   "name": "@saurbit/example-hono-basic",
   "version": "0.0.0",
+  "exports": "./main.ts",
   "imports": {
+    "@hono/standard-validator": "npm:@hono/standard-validator@^0.2.2",
+    "@hono/swagger-ui": "npm:@hono/swagger-ui@^0.5.3",
+    "arktype": "npm:arktype@^2.1.29",
     "hono": "npm:hono@^4",
+    "hono-openapi": "npm:hono-openapi@^1.2.0",
     "hono/": "npm:/hono@^4/"
   },
   "tasks": {

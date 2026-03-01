@@ -15,7 +15,7 @@ export { BearerToken } from "@saurbit/oauth2-server";
 /**
  * Hono adapter for the oauth2-server strategy.
  */
-export function integrateStrategy<E extends Env = Env>(
+export function createAuthMiddleware<E extends Env = Env>(
   options: StrategyOptions
 ): MiddlewareHandler<E & Oauth2ServerEnv> {
   return async (c, next) => {
