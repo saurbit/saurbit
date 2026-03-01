@@ -1,0 +1,12 @@
+{
+  "name": "@saurbit/example-hono-basic",
+  "version": "0.0.0",
+  "imports": {
+    "hono": "npm:hono@^4",
+    "hono/": "npm:/hono@^4/"
+  },
+  "tasks": {
+    "dev": "deno run --allow-net --watch main.ts",
+    "start": "deno run --allow-net main.ts"
+  }
+}

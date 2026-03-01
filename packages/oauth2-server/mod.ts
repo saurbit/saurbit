@@ -40,3 +40,27 @@ export type {
 export type { AuthorizationCodeGrant } from "./src/grants/authorization_code.ts";
 export type { ClientCredentialsGrant } from "./src/grants/client_credentials.ts";
 export type { RefreshTokenGrant } from "./src/grants/refresh_token.ts";
+
+export { BearerToken, type BearerTokenValidation } from "./src/token_types/bearer_token.ts";
+export type { TokenType, TokenValidationResponse } from "./src/token_types/types.ts";
+export type {
+  JwtAuthority,
+  JwtPayload,
+  JwtVerifier,
+  JwksKeyStore,
+  JwksRotationTimestampStore,
+  JwksRotatorOptions,
+  JwtSigner, 
+  KeyGenerator,
+  RSA,
+  RawKey
+ } from './src/utils/jwt_authority.ts';
+export { JwksRotator } from "./src/utils/jwt_authority.ts";
+export type { 
+  AppCredentials,
+  AuthCredentials,
+  StrategyResult,
+  UserCredentials,
+  StrategyOptions 
+} from "./src/strategy.ts";
+export { evaluateStrategy } from "./src/strategy.ts";

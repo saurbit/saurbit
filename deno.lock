@@ -2,7 +2,8 @@
   "version": "5",
   "specifiers": {
     "jsr:@std/assert@^1.0.19": "1.0.19",
-    "jsr:@std/internal@^1.0.12": "1.0.12"
+    "jsr:@std/internal@^1.0.12": "1.0.12",
+    "npm:hono@4": "4.12.3"
   },
   "jsr": {
     "@std/assert@1.0.19": {
@@ -15,8 +16,18 @@
       "integrity": "972a634fd5bc34b242024402972cd5143eac68d8dffaca5eaa4dba30ce17b027"
     }
   },
+  "npm": {
+    "hono@4.12.3": {
+      "integrity": "sha512-SFsVSjp8sj5UumXOOFlkZOG6XS9SJDKw0TbwFeV+AJ8xlST8kxK5Z/5EYa111UY8732lK2S/xB653ceuaoGwpg=="
+    }
+  },
   "workspace": {
     "members": {
+      "examples/hono-basic": {
+        "dependencies": [
+          "npm:hono@4"
+        ]
+      },
       "packages/oauth2-server": {
         "dependencies": [
           "jsr:@std/assert@^1.0.19"
