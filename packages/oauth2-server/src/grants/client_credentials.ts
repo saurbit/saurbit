@@ -1,3 +1,5 @@
+import { OAuth2Error } from "@saurbit/oauth2-server";
+import { evaluateStrategy, StrategyOptions, StrategyResult } from "../strategy.ts";
 import type { OAuth2Client, OAuth2TokenResponseBody } from "../types.ts";
 import { OAuth2AuthFlow, OAuth2AuthFlowOptions } from "./auth_flow.ts";
 
@@ -53,26 +55,28 @@ export interface ClientCredentialsModel {
  */
 export interface ClientCredentialsGrantFlowOptions extends OAuth2AuthFlowOptions {
   model: ClientCredentialsModel;
+  strategyOptions: StrategyOptions;
 }
 
 export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements ClientCredentialsGrant {
   readonly grantType = "client_credentials" as const;
   readonly #model: ClientCredentialsModel;
+  readonly #strategyOptions: StrategyOptions;
 
   constructor(options: ClientCredentialsGrantFlowOptions) {
-    const { model, ...flowOptions } = { ...options };
+    const { model, strategyOptions, ...flowOptions } = { ...options };
     super(flowOptions);
     this.#model = model;
+    this.#strategyOptions = strategyOptions;
   }
 
   /**
    * Handle a token request for the client credentials grant type.
    * Validates the client credentials and generates an access token if valid.
    * Returns an appropriate error response if validation fails.
-   * @param request 
-   * @returns 
+   * @param request The incoming HTTP request. 
    */
-  async token(request: Request): Promise<OAuth2TokenResponseBody | Response> {
+  async token(request: Request): Promise<OAuth2TokenResponseBody | Response | OAuth2Error> {
 
     if (request.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405, headers: { "Allow": "POST" } });
@@ -177,5 +181,13 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
     }
 
     return new Response("Not implemented", { status: 501 });
+  }
+
+  /**
+   * Verifies the token grants access
+   * @param request
+   */
+  async authorize(request: Request): Promise<StrategyResult> {
+    return await evaluateStrategy(request, this.#strategyOptions);
   }
 }
