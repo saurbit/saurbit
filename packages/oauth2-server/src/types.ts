@@ -3,6 +3,17 @@
  */
 export type OAuth2Scope = string | string[];
 
+export interface OAuth2TokenResponseBody {
+    access_token: string;
+    token_type: string;
+    expires_in?: number;
+    refresh_token?: string;
+    scope?: string;
+    id_token?: string;
+    error?: never;
+    [key: string]: unknown;
+}
+
 /**
  * Represents a registered OAuth 2.0 client.
  */

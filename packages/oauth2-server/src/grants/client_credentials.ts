@@ -1,6 +1,5 @@
-import { ClientSecretBasic } from "../client_auth_methods/client_secret_basic.ts";
-import type { OAuth2Model } from "../types.ts";
-import { BearerTokenType } from "../token_types/bearer_token.ts";
+import type { OAuth2Client, OAuth2TokenResponseBody } from "../types.ts";
+import { OAuth2AuthFlow, OAuth2AuthFlowOptions } from "./auth_flow.ts";
 
 /**
  * Handles the Client Credentials grant type.
@@ -13,22 +12,67 @@ export interface ClientCredentialsGrant {
 }
 
 /**
- * @internal
+ * Validation context for client credentials grant, 
+ * which can be used by the model's generateAccessToken() method
+ * to generate tokens with appropriate scopes, lifetimes, etc.
  */
-export class ClientCredentialsGrantImpl implements ClientCredentialsGrant {
-  readonly grantType = "client_credentials" as const;
-  readonly #model: OAuth2Model;
+export interface ClientCredentialsGrantContext {
+  grantType: string;
+  scopes: string[];
+  tokenType: string;
+  accessTokenLifetime: number;
+}
 
-  constructor(model: OAuth2Model) {
+/**
+ * Raw token request parameters for client credentials grant.
+ */
+export interface ClientCredentialsTokenRequest {
+  clientId: string;
+  clientSecret: string;
+  grantType?: string;
+  scopes?: string[];
+}
+
+/**
+ * Model interface that must be implemented by the consuming application
+ * to provide persistence for clients and tokens related to the client credentials grant.
+ */
+export interface ClientCredentialsModel {
+  /**
+   * Retrieve a client by its id (and optionally verify its secret).
+   */
+  getClient(tokenRequest: ClientCredentialsTokenRequest): Promise<OAuth2Client | undefined>;
+  /**
+   * Generate an access token for the client credentials grant.
+   */
+  generateAccessToken(context: ClientCredentialsGrantContext): Promise<string | undefined>;
+}
+
+/**
+ * Options for configuring the client credentials grant flow.
+ */
+export interface ClientCredentialsGrantFlowOptions extends OAuth2AuthFlowOptions {
+  model: ClientCredentialsModel;
+}
+
+export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements ClientCredentialsGrant {
+  readonly grantType = "client_credentials" as const;
+  readonly #model: ClientCredentialsModel;
+
+  constructor(options: ClientCredentialsGrantFlowOptions) {
+    const { model, ...flowOptions } = { ...options };
+    super(flowOptions);
     this.#model = model;
   }
 
-  // TODO: implement client credentials exchange
-
-  async token(request: Request): Promise<Response> {
-
-    // TODO: support multiple token types, not just Bearer
-    const tokenType = new BearerTokenType();
+  /**
+   * Handle a token request for the client credentials grant type.
+   * Validates the client credentials and generates an access token if valid.
+   * Returns an appropriate error response if validation fails.
+   * @param request 
+   * @returns 
+   */
+  async token(request: Request): Promise<OAuth2TokenResponseBody | Response> {
 
     if (request.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405, headers: { "Allow": "POST" } });
@@ -39,48 +83,50 @@ export class ClientCredentialsGrantImpl implements ClientCredentialsGrant {
     }
 
     const body: unknown = request.json ? await request.json() : null;
-    const requestedParams: {
-      grantType?: string;
-      scopes?: string[];
-    } = {};
+    let grantTypeInBody: string | undefined;
+    let scopesInBody: string[] | undefined;
+
     if (body && typeof body === 'object') {
       if ('grant_type' in body) {
-        requestedParams.grantType = typeof body.grant_type === 'string' ? body.grant_type : undefined;
+        grantTypeInBody = typeof body.grant_type === 'string' ? body.grant_type : undefined;
       }
       if ('scope' in body) {
-        requestedParams.scopes = typeof body.scope === 'string' ? body.scope.split(' ') : [];
+        scopesInBody = typeof body.scope === 'string' ? body.scope.split(' ') : undefined;
       }
     }
 
     // Validate that the grant type in the request body matches this grant type
-    if (requestedParams.grantType !== this.grantType) {
+    if (grantTypeInBody !== this.grantType) {
       return new Response("Unsupported grant type", { status: 400 });
     }
 
-    // Validate client metadata such as scopes, etc, ..., if applicable for client credentials grant
-    const validatedParams = {
-      grantType: requestedParams.grantType,
-      scopes: requestedParams.scopes || [],
-      tokenType: tokenType.prefix,
-      // TODO: get it from client metadata or model configuration
-      accessTokenLifetime: 3600
-    };
-
-    // Validate client authentication
-    // TODO: support multiple client authentication methods, not just client_secret_basic
-    const clientAuthMethod = new ClientSecretBasic();
-    const { clientId, clientSecret, hasAuthMethod } = clientAuthMethod.extractClientCredentials(request);
+    // Validate client authentication credentials using the registered client authentication methods
+    const { clientId, clientSecret, error } = await this.extractClientCredentials(
+      request,
+      this.clientAuthMethods,
+      this.getTokenEndpointAuthMethods()
+    );
 
     // If the request contains client authentication credentials, validate them
-    if (hasAuthMethod) {
+    if (!error) {
 
       // If clientId or clientSecret is missing, return 401 error
       if (!clientId || !clientSecret) {
         return new Response("Invalid client credentials", { status: 401 });
       }
 
+      const tokenRequest: ClientCredentialsTokenRequest = {
+        clientId,
+        clientSecret,
+        grantType: grantTypeInBody,
+        scopes: scopesInBody
+      };
+
       // Validate client credentials using the model's getClient() method
-      const client = await this.#model.getClient(clientId, clientSecret, { ...requestedParams });
+      const client = await this.#model.getClient(
+        // avoid mutation
+        { ...tokenRequest, scopes: tokenRequest.scopes ? [...tokenRequest.scopes] : [] }
+      );
 
       // If client authentication fails, return 401 error
       if (!client) {
@@ -93,27 +139,40 @@ export class ClientCredentialsGrantImpl implements ClientCredentialsGrant {
       }
 
       // Validate scope if provided in the request body (optional)
-      if (requestedParams.scopes && client.scopes) {
+      let validatedScopes: string[];
+      if (tokenRequest.scopes && client.scopes) {
         const allowedScopes = client.scopes ? client.scopes : [];
-        validatedParams.scopes = requestedParams.scopes?.filter(scope => allowedScopes.includes(scope)) || [];
+        validatedScopes = tokenRequest.scopes?.filter(scope => allowedScopes.includes(scope)) || [];
+      } else {
+        validatedScopes = [];
       }
 
-      // generate access token and refresh token from client, valid scope, 
+      // Validate client metadata such as scopes, etc, ..., if applicable for client credentials grant
+      const grantContext: ClientCredentialsGrantContext = {
+        grantType: grantTypeInBody,
+        scopes: validatedScopes,
+        tokenType: this.tokenType,
+        accessTokenLifetime: this.accessTokenLifetime
+      };
+
+      // generate access token from client, valid scope, 
       // and any other relevant information, 
       // using the model's generateAccessToken() and generateRefreshToken() methods
-      const accessToken = await this.#model.generateAccessToken?.(client, { ...validatedParams });
-      const refreshToken = await this.#model.generateRefreshToken?.(client, { ...validatedParams });
+      const accessToken = await this.#model.generateAccessToken?.(
+        // avoid mutation
+        { ...grantContext, scopes: [...grantContext.scopes] }
+      );
 
+      // If token generation fails
       if (!accessToken) {
         return new Response("Failed to generate access token", { status: 500 });
       }
 
-      const _responseBody = {
+      return {
         access_token: accessToken,
-        refresh_token: refreshToken ?? undefined,
-        token_type: tokenType.prefix,
-        expires_in: 3600,
-        scope: requestedParams.scopes?.join(' ') || ''
+        token_type: this.tokenType,
+        expires_in: grantContext.accessTokenLifetime,
+        scope: grantContext.scopes.join(' ')
       }
     }
 

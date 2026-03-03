@@ -22,6 +22,7 @@ export interface OAuth2AuthFlowOptions {
     options?: OAuth2AuthOptions<any>;
     */
     securitySchemeName?: string;
+    accessTokenLifetime?: number;
 }
 
 export abstract class OAuth2AuthFlow {
@@ -93,6 +94,7 @@ export abstract class OAuth2AuthFlow {
     constructor(options?: OAuth2AuthFlowOptions) {
         this._tokenType = new BearerTokenType();
         this.securitySchemeName = options?.securitySchemeName || 'oauth2-auth-flow';
+        this.accessTokenLifetime = options?.accessTokenLifetime || 3600;
         //this.options = options?.options ? { ...options.options } : {};
 
         //
