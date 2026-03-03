@@ -1,5 +1,5 @@
 import { InvalidRequestError, OAuth2Error } from "../errors.ts";
-import { BearerToken } from "../token_types/bearer_token.ts";
+import { BearerTokenType } from "../token_types/bearer_token.ts";
 import { TokenType } from "../token_types/types.ts";
 import { 
     ClientAuthMethod, 
@@ -25,6 +25,8 @@ export interface OAuth2AuthFlowOptions {
 }
 
 export abstract class OAuth2AuthFlow {
+    abstract readonly grantType: string;
+
     protected _clientAuthMethods: Record<TokenEndpointAuthMethod, ClientAuthMethod | undefined> = {
         client_secret_basic: undefined,
         client_secret_post: undefined,
@@ -89,7 +91,7 @@ export abstract class OAuth2AuthFlow {
     */
 
     constructor(options?: OAuth2AuthFlowOptions) {
-        this._tokenType = new BearerToken();
+        this._tokenType = new BearerTokenType();
         this.securitySchemeName = options?.securitySchemeName || 'oauth2-auth-flow';
         //this.options = options?.options ? { ...options.options } : {};
 
@@ -144,19 +146,19 @@ export abstract class OAuth2AuthFlow {
         };
     }
 
+    /*
     protected getJwtAuthority(): JwtAuthority | undefined {
         if (this.jwtAuthority) return this.jwtAuthority;
-        /*
         if (this.jwksRoute || this.jwksKeyStore || this.options.useAccessTokenJwks) {
             this.jwtAuthority = new JwtAuthority(this.jwksKeyStore || new InMemoryKeyStore(), this.jwksPublicKeyTtl);
         }
         return this.jwtAuthority;
-        */
     }
 
     async generateKeyPair(): Promise<void> {
         return await this.getJwtAuthority()?.generateKeyPair();
     }
+    */
 
     /*
     protected getJwksRotator(): JwksRotator | undefined {

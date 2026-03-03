@@ -13,8 +13,8 @@ export interface HonoStrategyOptions<E extends Env = Env> extends Omit<StrategyO
 }
 
 // Re-export for convenience
-export type { StrategyOptions, StrategyVerifyTokenFunction, AuthCredentials, TokenType, TokenValidationResponse } from "@saurbit/oauth2-server";
-export { BearerToken } from "@saurbit/oauth2-server";
+export type { StrategyOptions, StrategyVerifyTokenFunction, AuthCredentials, TokenType, TokenTypeValidationResponse } from "@saurbit/oauth2-server";
+export { BearerTokenType } from "@saurbit/oauth2-server";
 
 
 

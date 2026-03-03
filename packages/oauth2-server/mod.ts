@@ -41,8 +41,8 @@ export type { AuthorizationCodeGrant } from "./src/grants/authorization_code.ts"
 export type { ClientCredentialsGrant } from "./src/grants/client_credentials.ts";
 export type { RefreshTokenGrant } from "./src/grants/refresh_token.ts";
 
-export { BearerToken, type BearerTokenValidation } from "./src/token_types/bearer_token.ts";
-export type { TokenType, TokenValidationResponse } from "./src/token_types/types.ts";
+export { BearerTokenType, type BearerTokenValidation } from "./src/token_types/bearer_token.ts";
+export type { TokenType, TokenTypeValidationResponse } from "./src/token_types/types.ts";
 export type {
   JwtAuthority,
   JwtPayload,

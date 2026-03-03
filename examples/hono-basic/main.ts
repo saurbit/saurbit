@@ -8,7 +8,7 @@ import {
 } from "hono-openapi";
 import { swaggerUI } from '@hono/swagger-ui'
 
-import { createAuthMiddleware, BearerToken } from "./oauth2_hono_adapter.ts";
+import { createAuthMiddleware, BearerTokenType } from "./oauth2_hono_adapter.ts";
 
 const app = new Hono();
 
@@ -27,7 +27,7 @@ const responseSchema = type({
 })
 
 const auth = createAuthMiddleware({
-  tokenType: new BearerToken(),
+  tokenType: new BearerTokenType(),
   verifyToken: (_c, { token }) => {
     if (token === 'admin') {
       return {

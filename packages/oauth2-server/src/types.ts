@@ -88,9 +88,12 @@ export interface OAuth2Model {
   /**
    * Retrieve a client by its id (and optionally verify its secret).
    */
-  getClient(clientId: string, clientSecret?: string): Promise<OAuth2Client | undefined>;
+  getClient(clientId: string, clientSecret?: string, options?: { grantType?: string, scopes?: string[]; }): Promise<OAuth2Client | undefined>;
 
   // ── Token persistence ──────────────────────────────────────────────
+  
+  generateAccessToken?(client: OAuth2Client, validatedOptions: { scopes: string[]; grantType: string; accessTokenLifetime: number; tokenType: string; }): Promise<string | undefined>;
+  generateRefreshToken?(client: OAuth2Client, validatedOptions: { scopes: string[]; grantType: string; accessTokenLifetime: number; tokenType: string; }): Promise<string | undefined>;
 
   /**
    * Persist a newly generated token.

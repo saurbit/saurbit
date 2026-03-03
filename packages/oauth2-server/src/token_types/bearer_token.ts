@@ -1,11 +1,11 @@
-import type { TokenType, TokenValidationResponse } from "./types.ts";
+import type { TokenType, TokenTypeValidationResponse } from "./types.ts";
 
 export type BearerTokenValidation = (
   request: Request,
   token: string
-) => TokenValidationResponse | Promise<TokenValidationResponse>;
+) => TokenTypeValidationResponse | Promise<TokenTypeValidationResponse>;
 
-export class BearerToken implements TokenType {
+export class BearerTokenType implements TokenType {
   readonly prefix = "Bearer" as const;
   #handler: BearerTokenValidation;
 
@@ -18,7 +18,7 @@ export class BearerToken implements TokenType {
     return this;
   }
 
-  isValid(request: Request, token: string): Promise<TokenValidationResponse> | TokenValidationResponse {
+  isValid(request: Request, token: string): Promise<TokenTypeValidationResponse> | TokenTypeValidationResponse {
     return this.#handler(request, token);
   }
 }
