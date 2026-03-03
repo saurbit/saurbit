@@ -10,7 +10,11 @@ import {
     TokenEndpointAuthMethod 
 } from "../client_auth_methods/mod.ts";
 import { JwtAuthority } from "../utils/jwt_authority.ts";
+import { OAuth2TokenResponseBody } from "../types.ts";
 
+export type OAuth2AuthFlowTokenResponse =
+    | { success: true; data: OAuth2TokenResponseBody }
+    | { success: false; error: OAuth2Error };
 
 export interface OAuth2AuthFlowOptions {
     /*
@@ -391,4 +395,6 @@ export abstract class OAuth2AuthFlow {
         t.strategy(this.securitySchemeName, this.securitySchemeName, this.options);
     }
         */
+
+    abstract token(request: Request): Promise<OAuth2AuthFlowTokenResponse>;
 }

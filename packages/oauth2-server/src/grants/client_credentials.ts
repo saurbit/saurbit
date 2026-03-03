@@ -1,7 +1,13 @@
-import { OAuth2Error } from "@saurbit/oauth2-server";
+import {
+  InvalidClientError, 
+  InvalidRequestError, 
+  ServerError, 
+  UnauthorizedClientError, 
+  UnsupportedGrantTypeError 
+} from "../errors.ts";
 import { evaluateStrategy, StrategyOptions, StrategyResult } from "../strategy.ts";
-import type { OAuth2Client, OAuth2TokenResponseBody } from "../types.ts";
-import { OAuth2AuthFlow, OAuth2AuthFlowOptions } from "./auth_flow.ts";
+import type { OAuth2Client } from "../types.ts";
+import { OAuth2AuthFlow, OAuth2AuthFlowOptions, OAuth2AuthFlowTokenResponse } from "./auth_flow.ts";
 
 /**
  * Handles the Client Credentials grant type.
@@ -76,14 +82,14 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
    * Returns an appropriate error response if validation fails.
    * @param request The incoming HTTP request. 
    */
-  async token(request: Request): Promise<OAuth2TokenResponseBody | Response | OAuth2Error> {
+  async token(request: Request): Promise<OAuth2AuthFlowTokenResponse> {
 
     if (request.method !== "POST") {
-      return new Response("Method Not Allowed", { status: 405, headers: { "Allow": "POST" } });
+      return { success: false, error: new InvalidRequestError("Method Not Allowed") };
     }
 
     if (!request.headers.get("content-type")?.includes("application/json")) {
-      return new Response("Unsupported Media Type", { status: 415 });
+      return { success: false, error: new InvalidRequestError("Unsupported Media Type") };
     }
 
     const body: unknown = request.json ? await request.json() : null;
@@ -101,7 +107,7 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
 
     // Validate that the grant type in the request body matches this grant type
     if (grantTypeInBody !== this.grantType) {
-      return new Response("Unsupported grant type", { status: 400 });
+      return { success: false, error: new UnsupportedGrantTypeError("Unsupported grant type") };
     }
 
     // Validate client authentication credentials using the registered client authentication methods
@@ -116,7 +122,7 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
 
       // If clientId or clientSecret is missing, return 401 error
       if (!clientId || !clientSecret) {
-        return new Response("Invalid client credentials", { status: 401 });
+        return { success: false, error: new InvalidClientError("Invalid client credentials") };
       }
 
       const tokenRequest: ClientCredentialsTokenRequest = {
@@ -134,12 +140,12 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
 
       // If client authentication fails, return 401 error
       if (!client) {
-        return new Response("Invalid client credentials", { status: 401 });
+        return { success: false, error: new InvalidClientError("Invalid client credentials") };
       }
 
       // validate that client is allowed to use client credentials grant type
       if (!client.grants || !client.grants.includes(this.grantType)) {
-        return new Response("Unauthorized client for this grant type", { status: 401 });
+        return { success: false, error: new UnauthorizedClientError("Unauthorized client for this grant type") };
       }
 
       // Validate scope if provided in the request body (optional)
@@ -169,18 +175,21 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
 
       // If token generation fails
       if (!accessToken) {
-        return new Response("Failed to generate access token", { status: 500 });
+        return { success: false, error: new ServerError("Failed to generate access token") };
       }
 
       return {
-        access_token: accessToken,
-        token_type: this.tokenType,
-        expires_in: grantContext.accessTokenLifetime,
-        scope: grantContext.scopes.join(' ')
-      }
+        success: true,
+        data: {
+          access_token: accessToken,
+          token_type: this.tokenType,
+          expires_in: grantContext.accessTokenLifetime,
+          scope: grantContext.scopes.join(' ')
+        }
+      };
     }
 
-    return new Response("Not implemented", { status: 501 });
+    return { success: false, error: new ServerError("Not implemented") };
   }
 
   /**
