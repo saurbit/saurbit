@@ -56,6 +56,13 @@ export {
 } from './src/client_auth_methods/private_key_jwt.ts';
 export type { ClientAuthMethod, ClientAuthMethodResponse, TokenEndpointAuthMethod } from './src/client_auth_methods/types.ts';
 
+export type{
+  OAuth2AuthFlowOptions,
+  OAuth2AuthFlowTokenResponse
+} from './src/grants/auth_flow.ts';
+export {
+  OAuth2AuthFlow
+} from './src/grants/auth_flow.ts';
 export type { AuthorizationCodeGrant } from "./src/grants/authorization_code.ts";
 export type { 
   ClientCredentialsGrant, 
@@ -95,6 +102,7 @@ export {
   StrategyInvalidTokenError,
   StrategyJwtVerificationError,
   StrategyInvalidTokenTypeError,
+  StrategyInsufficientScopeError,
   StrategyInternalError,
   StrategyError 
  } from "./src/strategy.ts";

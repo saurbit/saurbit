@@ -10,15 +10,16 @@ import {
 import { swaggerUI } from '@hono/swagger-ui'
 
 import {
+StrategyInternalError,
   UnauthorizedClientError,
   UnsupportedGrantTypeError
 } from "@saurbit/oauth2-server";
 
 import {
-  //createAuthMiddleware, 
   BearerTokenType,
   HonoClientCredentialsGrantFlow
 } from "./oauth2_hono_adapter.ts";
+import { HTTPException } from "hono/http-exception";
 
 
 const clientCredentialsFlow = new HonoClientCredentialsGrantFlow({
@@ -43,25 +44,42 @@ const clientCredentialsFlow = new HonoClientCredentialsGrantFlow({
       accessTokenLifetime: _a,
       client: _c,
       grantType: _g,
-      scopes: _s,
+      scopes,
       tokenType: _t
     }) => {
-      console.log("generateAccessToken called with:", { client: _c, grantType: _g, scopes: _s, tokenType: _t });
+      console.log("generateAccessToken called with:", { client: _c, grantType: _g, scopes, tokenType: _t });
       // In a real implementation, you would generate a secure token here
-      return await Promise.resolve('admin');
+      return await Promise.resolve('admin-' + scopes.join(','));
     }
   },
   strategyOptions: {
+    failedAuthorizationAction: (_, error) => {
+      // You can perform additional actions here, such as logging or modifying the response
+      console.log("Authorization failed:", { error: error.name, message: error.message });
+      let message: string;
+      if (Deno.env.get("DENO_ENV") === "production") {
+        message =
+          error instanceof StrategyInternalError
+            ? "Internal Server Error"
+            : "Unauthorized";
+      } else {
+        message = "Unauthorized";
+      }
+      throw new HTTPException(401, {
+        message,
+      });
+    },
     verifyToken: (_context, { token }) => {
       console.log("verifyToken called with token:", token);
-      if (token === 'admin') {
+      if (token.startsWith('admin')) {
         return {
           isValid: true,
           credentials: {
             user: {
               username: 'admin',
               level: 50
-            }
+            },
+            scope: token.substring(6).split(',')
           }
         }
       }
@@ -121,33 +139,11 @@ const responseSchema = type({
   message: 'string',
 })
 
-/*
-const auth = createAuthMiddleware({
-  tokenType: new BearerTokenType(),
-  verifyToken: (_c, { token }) => {
-    if (token === 'admin') {
-      return {
-        isValid: true,
-        credentials: {
-          user: {
-            username: 'admin',
-            level: 50
-          }
-        }
-      }
-    }
-
-    return { isValid: false }
-  }
-})
-*/
-
 app.post(
   '/author',
 
   // Apply the authentication middleware to this route
-  //auth,
-  clientCredentialsFlow.authorizeMiddleware(),
+  clientCredentialsFlow.authorizeMiddleware(['content:write']),
 
   //
   describeRoute({
@@ -158,7 +154,9 @@ app.post(
       },
       */
       {
-        [clientCredentialsFlow.getSecuritySchemeName()]: [],
+        [clientCredentialsFlow.getSecuritySchemeName()]: [
+          'content:write'
+        ],
       },
     ],
     responses: {
@@ -174,10 +172,12 @@ app.post(
   }),
   arktypeValidator('json', schema),
   (c) => {
+    const username = c.var.credentials?.user?.username
     const data = c.req.valid('json')
     return c.json({
       success: true,
       message: `${data.name} is ${data.age}`,
+      username,
       me: c.get("credentials") // this will contain the credentials set by the authentication middleware
     })
   })
@@ -185,7 +185,7 @@ app.post(
 app.post(
   '/token',
   async (c) => {
-    const result = await clientCredentialsFlow.token(c.req.raw);
+    const result = await clientCredentialsFlow.tokenFromHono(c);
     if (result.success) {
       return c.json(result.tokenResponse);
     } else {

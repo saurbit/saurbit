@@ -34,6 +34,13 @@ export class StrategyJwtVerificationError extends StrategyError {
 }
 
 /**
+ * Returned when the token is valid but the scope is insufficient.
+ */
+export class StrategyInsufficientScopeError extends StrategyError {
+    readonly status = 401 as const;
+}
+
+/**
  * Returned when the verifyToken callback rejects unexpectedly.
  */
 export class StrategyInternalError extends StrategyError {
