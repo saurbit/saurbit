@@ -3,13 +3,12 @@
   "version": "0.1.0",
   "license": "MIT",
   "exports": {
-    ".": "./mod.ts"
+    ".": "./src/mod.ts"
   },
   "publish": {
     "include": [
       "LICENSE",
       "README.md",
-      "mod.ts",
       "src/**/*.ts"
     ]
   },

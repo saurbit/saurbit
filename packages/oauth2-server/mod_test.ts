@@ -1,6 +1,6 @@
 import { assertEquals, assertInstanceOf } from "@std/assert";
-import { InvalidRequestError, OAuth2Error, OAuth2Server } from "./mod.ts";
-import type { OAuth2Model } from "./mod.ts";
+import { InvalidRequestError, OAuth2Error, OAuth2Server } from "./src/mod.ts";
+import type { OAuth2Model } from "./src/mod.ts";
 
 /** Minimal stub model for testing. */
 function createStubModel(): OAuth2Model {

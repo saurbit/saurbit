@@ -10,8 +10,8 @@
  * ```
  */
 
-export { OAuth2Server } from "./src/server.ts";
-export type { OAuth2ServerOptions } from "./src/server.ts";
+export { OAuth2Server } from "./server.ts";
+export type { OAuth2ServerOptions } from "./server.ts";
 
 export {
   AccessDeniedError,
@@ -27,7 +27,7 @@ export {
   UnauthorizedRequestError,
   UnsupportedGrantTypeError,
   UnsupportedResponseTypeError,
-} from "./src/errors.ts";
+} from "./errors.ts";
 
 export type {
   OAuth2AuthorizationCode,
@@ -35,40 +35,40 @@ export type {
   OAuth2Model,
   OAuth2Scope,
   OAuth2Token,
-} from "./src/types.ts";
+} from "./types.ts";
 
-export { ClientSecretBasic } from "./src/client_auth_methods/client_secret_basic.ts";
-export { ClientSecretPost } from "./src/client_auth_methods/client_secret_post.ts";
-export { NoneAuthMethod } from "./src/client_auth_methods/none.ts";
+export { ClientSecretBasic } from "./client_auth_methods/client_secret_basic.ts";
+export { ClientSecretPost } from "./client_auth_methods/client_secret_post.ts";
+export { NoneAuthMethod } from "./client_auth_methods/none.ts";
 export {
   ClientSecretJwt,
   ClientSecretJwtAlgorithms,
-} from "./src/client_auth_methods/client_secret_jwt.ts";
+} from "./client_auth_methods/client_secret_jwt.ts";
 export {
   PrivateKeyJwt,
   PrivateKeyJwtAlgorithms,
-} from "./src/client_auth_methods/private_key_jwt.ts";
+} from "./client_auth_methods/private_key_jwt.ts";
 export type {
   ClientAuthMethod,
   ClientAuthMethodResponse,
   TokenEndpointAuthMethod,
-} from "./src/client_auth_methods/types.ts";
+} from "./client_auth_methods/types.ts";
 
-export type { OAuth2AuthFlowOptions, OAuth2AuthFlowTokenResponse } from "./src/grants/auth_flow.ts";
-export { OAuth2AuthFlow } from "./src/grants/auth_flow.ts";
-export type { AuthorizationCodeGrant } from "./src/grants/authorization_code.ts";
+export type { OAuth2AuthFlowOptions, OAuth2AuthFlowTokenResponse } from "./grants/auth_flow.ts";
+export { OAuth2AuthFlow } from "./grants/auth_flow.ts";
+export type { AuthorizationCodeGrant } from "./grants/authorization_code.ts";
 export type {
   ClientCredentialsGrant,
   ClientCredentialsGrantContext,
   ClientCredentialsGrantFlowOptions,
   ClientCredentialsModel,
   ClientCredentialsTokenRequest,
-} from "./src/grants/client_credentials.ts";
-export { ClientCredentialsGrantFlow } from "./src/grants/client_credentials.ts";
-export type { RefreshTokenGrant } from "./src/grants/refresh_token.ts";
+} from "./grants/client_credentials.ts";
+export { ClientCredentialsGrantFlow } from "./grants/client_credentials.ts";
+export type { RefreshTokenGrant } from "./grants/refresh_token.ts";
 
-export { BearerTokenType, type BearerTokenValidation } from "./src/token_types/bearer_token.ts";
-export type { TokenType, TokenTypeValidationResponse } from "./src/token_types/types.ts";
+export { BearerTokenType, type BearerTokenValidation } from "./token_types/bearer_token.ts";
+export type { TokenType, TokenTypeValidationResponse } from "./token_types/types.ts";
 export type {
   JwksKeyStore,
   JwksRotationTimestampStore,
@@ -80,8 +80,8 @@ export type {
   KeyGenerator,
   RawKey,
   RSA,
-} from "./src/utils/jwt_authority.ts";
-export { JwksRotator } from "./src/utils/jwt_authority.ts";
+} from "./utils/jwt_authority.ts";
+export { JwksRotator } from "./utils/jwt_authority.ts";
 export type {
   AppCredentials,
   AuthCredentials,
@@ -89,7 +89,7 @@ export type {
   StrategyResult,
   StrategyVerifyTokenFunction,
   UserCredentials,
-} from "./src/strategy.ts";
+} from "./strategy.ts";
 export {
   evaluateStrategy,
   StrategyError,
@@ -98,4 +98,4 @@ export {
   StrategyInvalidTokenError,
   StrategyInvalidTokenTypeError,
   StrategyJwtVerificationError,
-} from "./src/strategy.ts";
+} from "./strategy.ts";
