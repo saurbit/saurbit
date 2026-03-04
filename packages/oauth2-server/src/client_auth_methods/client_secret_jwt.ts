@@ -67,12 +67,20 @@ export class ClientSecretJwt implements ClientAuthMethod {
             hasAuthMethod: false,
         };
 
+        // Extract info from the request body (either form-urlencoded or JSON)
+        let body: unknown;
         const contentType = req.headers.get("content-type") || "";
-        if (!contentType.includes("application/json")) {
-            return res; // Only process JSON requests for JWT client authentication
+        if (contentType.includes("application/x-www-form-urlencoded")) {
+            const form = await req.formData();
+            body = {
+                client_assertion_type: form.get("client_assertion_type"),
+                client_assertion: form.get("client_assertion"),
+            };
+        } else if (contentType.includes("application/json")) {
+            body = req.json ? await req.json() : null;
+        } else {
+            body = null;
         }
-
-        const body: unknown = req.json ? await req.json() : null;
 
         if (
             body &&

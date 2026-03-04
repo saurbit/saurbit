@@ -1,6 +1,15 @@
 import type { MiddlewareHandler, Env, Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { evaluateStrategy, type StrategyOptions, type AuthCredentials, StrategyInternalError, StrategyVerifyTokenFunction } from "@saurbit/oauth2-server";
+import { 
+  evaluateStrategy, 
+  type StrategyOptions, 
+  type AuthCredentials, 
+  StrategyInternalError, 
+  StrategyVerifyTokenFunction, 
+  ClientCredentialsGrantFlowOptions, 
+  ClientCredentialsGrantFlow,
+  StrategyResult 
+} from "@saurbit/oauth2-server";
 
 export interface OAuth2ServerEnv extends Env {
   Variables: {
@@ -15,7 +24,6 @@ export interface HonoStrategyOptions<E extends Env = Env> extends Omit<StrategyO
 // Re-export for convenience
 export type { StrategyOptions, StrategyVerifyTokenFunction, AuthCredentials, TokenType, TokenTypeValidationResponse } from "@saurbit/oauth2-server";
 export { BearerTokenType } from "@saurbit/oauth2-server";
-
 
 
 /**
@@ -53,4 +61,66 @@ export function createAuthMiddleware<E extends Env = Env>(
       message
     });
   };
+}
+
+export interface HonoClientCredentialsFlowOptions<E extends Env = Env>
+  extends Omit<ClientCredentialsGrantFlowOptions, "strategyOptions"> {
+  strategyOptions: Omit<HonoStrategyOptions<E>, 'tokenType'>;
+}
+
+export class HonoClientCredentialsGrantFlow<E extends Env = Env> extends ClientCredentialsGrantFlow {
+  readonly #authorizeHandler: (context: Context<E & OAuth2ServerEnv>) => Promise<StrategyResult>;
+  readonly #authorizeMiddleware: MiddlewareHandler<E & OAuth2ServerEnv>;
+
+  constructor(options: HonoClientCredentialsFlowOptions<E>) {
+    const { strategyOptions, ...flowOptions } = options;
+
+    super({
+      ...flowOptions,
+      strategyOptions: {}
+    });
+
+    this.#authorizeHandler = async (context: Context<E & OAuth2ServerEnv>) => {
+      const honoVerifyToken = strategyOptions.verifyToken;
+      const verifyToken: StrategyVerifyTokenFunction | undefined = honoVerifyToken ? async (_, params) => {
+        return await honoVerifyToken(context, params);
+      } : undefined
+
+      return await evaluateStrategy(context.req.raw, {
+        ...strategyOptions,
+        verifyToken,
+        tokenType: this._tokenType
+      });
+    }
+
+    this.#authorizeMiddleware = async (c, next) => {
+
+      const result = await this.authorizeFromHono(c);
+
+      if (result.success) {
+        // set credentials in context for downstream handlers
+        c.set("credentials", result.credentials);
+        return await next();
+      }
+
+      let message: string;
+      if (Deno.env.get("DENO_ENV") === "production") {
+        message = result.error instanceof StrategyInternalError ? "Internal Server Error" : "Unauthorized";
+      } else {
+        message = result.error.message;
+      }
+
+      throw new HTTPException(result.error.status, {
+        message
+      });
+    }
+  }
+
+  async authorizeFromHono(context: Context<E & OAuth2ServerEnv>): Promise<StrategyResult> {
+    return await this.#authorizeHandler(context);
+  }
+
+  authorizeMiddleware(): MiddlewareHandler<E & OAuth2ServerEnv> {
+    return this.#authorizeMiddleware;
+  }
 }

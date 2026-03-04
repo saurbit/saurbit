@@ -37,6 +37,25 @@ export type {
   OAuth2Scope,
 } from "./src/types.ts";
 
+export {
+    ClientSecretBasic
+} from './src/client_auth_methods/client_secret_basic.ts';
+export {
+    ClientSecretPost
+} from './src/client_auth_methods/client_secret_post.ts';
+export {
+    NoneAuthMethod
+} from './src/client_auth_methods/none.ts';
+export {
+    ClientSecretJwt,
+    ClientSecretJwtAlgorithms
+} from './src/client_auth_methods/client_secret_jwt.ts';
+export {
+    PrivateKeyJwt,
+    PrivateKeyJwtAlgorithms
+} from './src/client_auth_methods/private_key_jwt.ts';
+export type { ClientAuthMethod, ClientAuthMethodResponse, TokenEndpointAuthMethod } from './src/client_auth_methods/types.ts';
+
 export type { AuthorizationCodeGrant } from "./src/grants/authorization_code.ts";
 export type { 
   ClientCredentialsGrant, 

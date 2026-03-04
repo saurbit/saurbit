@@ -14,12 +14,20 @@ export class ClientSecretPost implements ClientAuthMethod {
             hasAuthMethod: false,
         };
 
+        // Extract info from the request body (either form-urlencoded or JSON)
+        let body: unknown;
         const contentType = req.headers.get("content-type") || "";
-        if (!contentType.includes("application/json")) {
-            return res; // Only process JSON requests for client secret post authentication
+        if (contentType.includes("application/x-www-form-urlencoded")) {
+            const form = await req.formData();
+            body = {
+                client_id: form.get("client_id"),
+                client_secret: form.get("client_secret"),
+            };
+        } else if (contentType.includes("application/json")) {
+            body = req.json ? await req.json() : null;
+        } else {
+            body = null;
         }
-
-        const body: unknown = req.json ? await req.json() : null;
 
         if (
             body &&

@@ -1,9 +1,9 @@
 import {
-  InvalidClientError, 
-  InvalidRequestError, 
-  ServerError, 
-  UnauthorizedClientError, 
-  UnsupportedGrantTypeError 
+  InvalidClientError,
+  InvalidRequestError,
+  ServerError,
+  UnauthorizedClientError,
+  UnsupportedGrantTypeError
 } from "../errors.ts";
 import { evaluateStrategy, StrategyOptions, StrategyResult } from "../strategy.ts";
 import type { OAuth2Client } from "../types.ts";
@@ -25,6 +25,7 @@ export interface ClientCredentialsGrant {
  * to generate tokens with appropriate scopes, lifetimes, etc.
  */
 export interface ClientCredentialsGrantContext {
+  client: OAuth2Client;
   grantType: string;
   scopes: string[];
   tokenType: string;
@@ -61,13 +62,13 @@ export interface ClientCredentialsModel {
  */
 export interface ClientCredentialsGrantFlowOptions extends OAuth2AuthFlowOptions {
   model: ClientCredentialsModel;
-  strategyOptions: StrategyOptions;
+  strategyOptions: Omit<StrategyOptions, 'tokenType'>;
 }
 
 export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements ClientCredentialsGrant {
   readonly grantType = "client_credentials" as const;
   readonly #model: ClientCredentialsModel;
-  readonly #strategyOptions: StrategyOptions;
+  readonly #strategyOptions: Omit<StrategyOptions, 'tokenType'>;
 
   constructor(options: ClientCredentialsGrantFlowOptions) {
     const { model, strategyOptions, ...flowOptions } = { ...options };
@@ -88,13 +89,22 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
       return { success: false, error: new InvalidRequestError("Method Not Allowed") };
     }
 
-    if (!request.headers.get("content-type")?.includes("application/json")) {
-      return { success: false, error: new InvalidRequestError("Unsupported Media Type") };
-    }
-
-    const body: unknown = request.json ? await request.json() : null;
+    let body: unknown;
     let grantTypeInBody: string | undefined;
     let scopesInBody: string[] | undefined;
+    const contentType = request.headers.get("content-type") || "";
+
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      const form = await request.formData();
+      body = {
+        grant_type: form.get("grant_type"),
+        scope: form.get("scope")
+      };
+    } else if (contentType.includes("application/json")) {
+      body = request.json ? await request.json() : null;
+    } else {
+      return { success: false, error: new InvalidRequestError("Unsupported Media Type") };
+    }
 
     if (body && typeof body === 'object') {
       if ('grant_type' in body) {
@@ -159,6 +169,7 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
 
       // Validate client metadata such as scopes, etc, ..., if applicable for client credentials grant
       const grantContext: ClientCredentialsGrantContext = {
+        client: client,
         grantType: grantTypeInBody,
         scopes: validatedScopes,
         tokenType: this.tokenType,
@@ -180,7 +191,7 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
 
       return {
         success: true,
-        data: {
+        tokenResponse: {
           access_token: accessToken,
           token_type: this.tokenType,
           expires_in: grantContext.accessTokenLifetime,
@@ -189,7 +200,7 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
       };
     }
 
-    return { success: false, error: new ServerError("Not implemented") };
+    return { success: false, error };
   }
 
   /**
@@ -197,6 +208,6 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
    * @param request
    */
   async authorize(request: Request): Promise<StrategyResult> {
-    return await evaluateStrategy(request, this.#strategyOptions);
+    return await evaluateStrategy(request, { ...this.#strategyOptions, tokenType: this._tokenType });
   }
 }

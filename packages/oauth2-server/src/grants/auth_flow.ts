@@ -13,7 +13,7 @@ import { JwtAuthority } from "../utils/jwt_authority.ts";
 import { OAuth2TokenResponseBody } from "../types.ts";
 
 export type OAuth2AuthFlowTokenResponse =
-    | { success: true; data: OAuth2TokenResponseBody }
+    | { success: true; tokenResponse: OAuth2TokenResponseBody }
     | { success: false; error: OAuth2Error };
 
 export interface OAuth2AuthFlowOptions {
@@ -127,10 +127,8 @@ export abstract class OAuth2AuthFlow {
         for (const am of supported) {
             const amInstance = authMethodsInstances[am];
             if (amInstance) {
-                //console.log('Check', amInstance.method, '...')
                 const v = await amInstance.extractClientCredentials(req as unknown as Request);
                 if (v.hasAuthMethod) {
-                    //console.log(amInstance.method, 'IS BEING USED')
                     clientId = v.clientId;
                     clientSecret = v.clientSecret;
                     if (!v.clientId) {
@@ -139,8 +137,6 @@ export abstract class OAuth2AuthFlow {
                         error = new InvalidRequestError(`${amInstance.method} authentication requires client_secret`);
                     }
                     break;
-                } else {
-                    // console.log(amInstance.method, 'was not used')
                 }
             }
         }
