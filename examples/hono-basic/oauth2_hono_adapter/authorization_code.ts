@@ -14,6 +14,7 @@ import {
   HonoStrategyOptionsWithFailedAuth,
   OAuth2ServerEnv,
 } from "./types.ts";
+import { AuthorizationCodeEndpointResponse } from "@saurbit/oauth2-server";
 
 export interface HonoAuthorizationCodeFlowOptions<E extends Env = Env>
   extends Omit<AuthorizationCodeGrantFlowOptions, "strategyOptions"> {
@@ -96,5 +97,9 @@ export class HonoAuthorizationCodeGrantFlow<
 
   authorizeMiddleware(scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> {
     return scopes?.length ? this.#createAuthorizeMiddleware(scopes) : this.#authorizeMiddleware;
+  }
+
+  async handleAuthorizationEndpointFromHono(context: Context): Promise<AuthorizationCodeEndpointResponse> {
+    return await this.handleAuthorizationEndpoint(context.req.raw);
   }
 }

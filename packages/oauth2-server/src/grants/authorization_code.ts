@@ -38,7 +38,6 @@ export interface AuthorizationCodeGrantContext {
   code: string;
   codeVerifier?: string;
   redirectUri?: string;
-  scopes: string[];
 }
 
 /**
@@ -50,7 +49,6 @@ export interface AuthorizationCodeTokenRequest {
   code: string;
   codeVerifier?: string;
   clientSecret?: string;
-  scopes?: string[];
   redirectUri?: string;
 }
 
@@ -63,7 +61,7 @@ export interface AuthorizationCodeEndpointContext {
   client: OAuth2Client;
   responseType: "code"; // should be "code" for authorization code grant
   redirectUri: string;
-  scopes?: string[];
+  scopes: string[];
   state?: string;
   codeChallenge?: string;
   nonce?: string;
@@ -212,12 +210,22 @@ export class AuthorizationCodeGrantFlow extends OAuth2AuthFlow implements Author
         return { success: false, error: new ServerError("Failed to generate authorization code") };
       }
 
+      // Validate scope if provided in the request body (optional)
+      let validatedScopes: string[];
+      if (client.scopes) {
+        const allowedScopes = client.scopes ? client.scopes : [];
+        validatedScopes = scope?.split(" ")?.filter((scope) => allowedScopes.includes(scope)) ||
+          [];
+      } else {
+        validatedScopes = [];
+      }
+
       return {
         success: true,
         codeResponse: {
           client,
           redirectUri,
-          scopes: scope ? scope.split(" ") : [],
+          scopes: validatedScopes,
           code,
           state,
         },
@@ -240,7 +248,6 @@ export class AuthorizationCodeGrantFlow extends OAuth2AuthFlow implements Author
 
     let body: unknown;
     let grantTypeInBody: string | undefined;
-    let scopesInBody: string[] | undefined;
     let codeInBody: string | undefined;
     let codeVerifierInBody: string | undefined;
     let redirectUriInBody: string | undefined;
@@ -264,9 +271,6 @@ export class AuthorizationCodeGrantFlow extends OAuth2AuthFlow implements Author
     if (body && typeof body === "object") {
       if ("grant_type" in body) {
         grantTypeInBody = typeof body.grant_type === "string" ? body.grant_type : undefined;
-      }
-      if ("scope" in body) {
-        scopesInBody = typeof body.scope === "string" ? body.scope.split(" ") : undefined;
       }
       if ("code" in body) {
         codeInBody = typeof body.code === "string" ? body.code : undefined;
@@ -322,7 +326,6 @@ export class AuthorizationCodeGrantFlow extends OAuth2AuthFlow implements Author
         clientId,
         clientSecret,
         grantType: grantTypeInBody,
-        scopes: scopesInBody,
         code: codeInBody,
         codeVerifier: codeVerifierInBody,
         redirectUri: redirectUriInBody,
@@ -331,7 +334,7 @@ export class AuthorizationCodeGrantFlow extends OAuth2AuthFlow implements Author
       // Validate client credentials using the model's getClient() method
       const client = await this.#model.getClient(
         // avoid mutation
-        { ...tokenRequest, scopes: tokenRequest.scopes ? [...tokenRequest.scopes] : [] },
+        { ...tokenRequest },
       );
 
       // If client authentication fails, return 401 error
@@ -347,21 +350,10 @@ export class AuthorizationCodeGrantFlow extends OAuth2AuthFlow implements Author
         };
       }
 
-      // Validate scope if provided in the request body (optional)
-      let validatedScopes: string[];
-      if (tokenRequest.scopes && client.scopes) {
-        const allowedScopes = client.scopes ? client.scopes : [];
-        validatedScopes = tokenRequest.scopes?.filter((scope) => allowedScopes.includes(scope)) ||
-          [];
-      } else {
-        validatedScopes = [];
-      }
-
       // Validate client metadata such as scopes, etc, ..., if applicable for client credentials grant
       const grantContext: AuthorizationCodeGrantContext = {
         client: client,
         grantType: grantTypeInBody,
-        scopes: validatedScopes,
         tokenType: this.tokenType,
         accessTokenLifetime: this.accessTokenLifetime,
         code: codeInBody,
@@ -374,7 +366,7 @@ export class AuthorizationCodeGrantFlow extends OAuth2AuthFlow implements Author
       // using the model's generateAccessToken() and generateRefreshToken() methods
       const accessToken = await this.#model.generateAccessToken?.(
         // avoid mutation
-        { ...grantContext, scopes: [...grantContext.scopes] },
+        { ...grantContext },
       );
 
       // If token generation fails
@@ -388,7 +380,7 @@ export class AuthorizationCodeGrantFlow extends OAuth2AuthFlow implements Author
           access_token: accessToken,
           token_type: this.tokenType,
           expires_in: grantContext.accessTokenLifetime,
-          scope: grantContext.scopes.join(" "),
+          scope: '',
         },
       };
     }

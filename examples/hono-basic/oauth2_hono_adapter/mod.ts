@@ -16,6 +16,11 @@ export type {
 } from "./types.ts";
 
 export { createAuthMiddleware } from "./utils.ts";
+
+export {
+  type HonoAuthorizationCodeFlowOptions,
+  HonoAuthorizationCodeGrantFlow,
+} from "./authorization_code.ts"
 export {
   type HonoClientCredentialsFlowOptions,
   HonoClientCredentialsGrantFlow,
