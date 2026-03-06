@@ -1,3 +1,5 @@
+// oauth2_hono_adapter/authorization_code.ts
+
 import type { Context, Env, MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
@@ -133,7 +135,7 @@ export class HonoAuthorizationCodeGrantFlow<
    */
   async processAuthorizationFromHono(context: Context): Promise<AuthorizationCodeProcessResponse> {
     return await this.processAuthorization(
-      context.req.raw,
+      context.req.raw.clone(),
       await this.#parseAuthorizationEndpointBody(context),
     );
   }

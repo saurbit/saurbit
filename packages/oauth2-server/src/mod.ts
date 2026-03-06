@@ -51,13 +51,21 @@ export type {
   TokenEndpointAuthMethod,
 } from "./client_auth_methods/types.ts";
 
-export type { OAuth2AuthFlowOptions, OAuth2AuthFlowTokenResponse } from "./grants/auth_flow.ts";
+export type {
+  OAuth2AccessTokenResult,
+  OAuth2AuthFlowOptions,
+  OAuth2AuthFlowTokenResponse,
+  OAuth2GrantModel,
+} from "./grants/auth_flow.ts";
 export { OAuth2AuthFlow } from "./grants/auth_flow.ts";
 export type {
+  AuthorizationCodeAccessTokenResult,
   AuthorizationCodeEndpointContext,
+  AuthorizationCodeEndpointContinueResponse,
   AuthorizationCodeEndpointRequest,
   AuthorizationCodeEndpointResponse,
   AuthorizationCodeEndpointResponseParams,
+  AuthorizationCodeGeneratorResult,
   AuthorizationCodeGrant,
   AuthorizationCodeGrantContext,
   AuthorizationCodeGrantFlowOptions,

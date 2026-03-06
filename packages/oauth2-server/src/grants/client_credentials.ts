@@ -1,3 +1,5 @@
+// grants/client_credentials.ts
+
 import {
   InvalidClientError,
   InvalidRequestError,
@@ -9,9 +11,9 @@ import { TokenTypeValidationResponse } from "../token_types/types.ts";
 import type { OAuth2Client } from "../types.ts";
 import {
   OAuth2AuthFlow,
-  OAuth2AuthFlowOptions,
-  OAuth2AuthFlowTokenResponse,
-  OAuth2GrantModel,
+  type OAuth2AuthFlowOptions,
+  type OAuth2AuthFlowTokenResponse,
+  type OAuth2GrantModel,
 } from "./auth_flow.ts";
 
 /**
@@ -190,20 +192,22 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
       // generate access token from client, valid scope,
       // and any other relevant information,
       // using the model's generateAccessToken() and generateRefreshToken() methods
-      const accessToken = await this.#model.generateAccessToken?.(
+      const accessTokenResult = await this.#model.generateAccessToken?.(
         // avoid mutation
         { ...grantContext, scope: [...grantContext.scope] },
       );
 
       // If token generation fails
-      if (!accessToken) {
+      if (!accessTokenResult) {
         return { success: false, error: new ServerError("Failed to generate access token") };
       }
 
       return {
         success: true,
         tokenResponse: {
-          access_token: accessToken,
+          access_token: typeof accessTokenResult === "string"
+            ? accessTokenResult
+            : accessTokenResult.accessToken,
           token_type: this.tokenType,
           expires_in: grantContext.accessTokenLifetime,
           scope: grantContext.scope.join(" "),

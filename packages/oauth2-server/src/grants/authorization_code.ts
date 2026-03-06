@@ -1,4 +1,7 @@
+// grants/authorization_code.ts
+
 import {
+  AccessDeniedError,
   InvalidClientError,
   InvalidRequestError,
   OAuth2Error,
@@ -7,12 +10,13 @@ import {
   UnsupportedGrantTypeError,
 } from "../errors.ts";
 import { TokenTypeValidationResponse } from "../token_types/types.ts";
-import type { OAuth2Client } from "../types.ts";
+import type { OAuth2Client, OAuth2TokenResponseBody } from "../types.ts";
 import {
+  type OAuth2AccessTokenResult,
   OAuth2AuthFlow,
-  OAuth2AuthFlowOptions,
-  OAuth2AuthFlowTokenResponse,
-  OAuth2GrantModel,
+  type OAuth2AuthFlowOptions,
+  type OAuth2AuthFlowTokenResponse,
+  type OAuth2GrantModel,
 } from "./auth_flow.ts";
 
 export interface AuthorizationCodeUser {
@@ -98,6 +102,23 @@ export interface AuthorizationCodeEndpointRequest {
   nonce?: string;
 }
 
+export interface AuthorizationCodeEndpointContinueResponse {
+  user: AuthorizationCodeUser;
+  client: OAuth2Client;
+  redirectUri: string;
+  scope: string[];
+  message?: string;
+  state?: string;
+  /**
+   * for OpenID Connect, the nonce parameter is required in the authorization request and should be included in the context for generating the authorization code, so that it can be associated with the authorization code and later included in the ID token when exchanging the authorization code for tokens at the token endpoint.
+   * @see https://openid.net/specs/openid-connect-core-1_0.html#AuthorizationEndpoint
+   * @see https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
+   */
+  nonce?: string;
+  error?: never;
+  [key: string]: unknown;
+}
+
 export interface AuthorizationCodeEndpointResponseParams {
   user: AuthorizationCodeUser;
   client: OAuth2Client;
@@ -120,7 +141,14 @@ export type AuthorizationCodeEndpointResponse =
   | {
     success: true;
     method: "POST";
+    type: "code";
     authorizationCodeResponse: AuthorizationCodeEndpointResponseParams;
+  }
+  | {
+    success: true;
+    method: "POST";
+    type: "continue";
+    continueResponse: AuthorizationCodeEndpointContinueResponse;
   }
   | { success: false; error: OAuth2Error };
 
@@ -129,8 +157,31 @@ export type AuthorizationCodeInitiationResponse =
   | { success: false; error: OAuth2Error };
 
 export type AuthorizationCodeProcessResponse =
-  | { success: true; authorizationCodeResponse: AuthorizationCodeEndpointResponseParams }
+  | {
+    success: true;
+    type: "continue";
+    continueResponse: AuthorizationCodeEndpointContinueResponse;
+  }
+  | {
+    success: true;
+    type: "code";
+    authorizationCodeResponse: AuthorizationCodeEndpointResponseParams;
+  }
   | { success: false; error: OAuth2Error };
+
+export interface AuthorizationCodeAccessTokenResult extends OAuth2AccessTokenResult {
+  /**
+   * Necessary to return the scope to the client.
+   */
+  scope?: string[];
+
+  refreshToken?: string;
+}
+
+export type AuthorizationCodeGeneratorResult =
+  | { type: "code"; code: string }
+  | { type: "continue"; message?: string }
+  | { type: "deny"; message?: string };
 
 /**
  * Model interface that must be implemented by the consuming application
@@ -138,7 +189,12 @@ export type AuthorizationCodeProcessResponse =
  */
 export interface AuthorizationCodeModel<
   AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
-> extends OAuth2GrantModel<AuthorizationCodeTokenRequest, AuthorizationCodeGrantContext> {
+> extends
+  OAuth2GrantModel<
+    AuthorizationCodeTokenRequest,
+    AuthorizationCodeGrantContext,
+    AuthorizationCodeAccessTokenResult
+  > {
   getClientForAuthentication(
     authRequest: AuthorizationCodeEndpointRequest,
   ): Promise<OAuth2Client | undefined>;
@@ -152,7 +208,7 @@ export interface AuthorizationCodeModel<
   generateAuthorizationCode(
     context: AuthorizationCodeEndpointContext,
     user: AuthorizationCodeUser,
-  ): Promise<string | undefined>;
+  ): Promise<AuthorizationCodeGeneratorResult | undefined>;
 }
 
 /**
@@ -191,7 +247,9 @@ export class AuthorizationCodeGrantFlow<
     return this.authorizationUrl;
   }
 
-  async getAuthorizationCodeEndpointContext(request: Request): Promise<
+  async getAuthorizationCodeEndpointContext(
+    request: Request,
+  ): Promise<
     | { success: true; context: AuthorizationCodeEndpointContext }
     | { success: false; error: OAuth2Error }
   > {
@@ -205,15 +263,24 @@ export class AuthorizationCodeGrantFlow<
     const nonce = query.get("nonce") || undefined;
 
     if (!clientId) {
-      return { success: false, error: new InvalidRequestError("Missing client_id parameter") };
+      return {
+        success: false,
+        error: new InvalidRequestError("Missing client_id parameter"),
+      };
     }
 
     if (responseType !== "code") {
-      return { success: false, error: new UnsupportedGrantTypeError("Unsupported response type") };
+      return {
+        success: false,
+        error: new UnsupportedGrantTypeError("Unsupported response type"),
+      };
     }
 
     if (!redirectUri) {
-      return { success: false, error: new InvalidRequestError("Missing redirect_uri parameter") };
+      return {
+        success: false,
+        error: new InvalidRequestError("Missing redirect_uri parameter"),
+      };
     }
 
     // In a real implementation, you would validate the client_id and redirect_uri here,
@@ -232,7 +299,9 @@ export class AuthorizationCodeGrantFlow<
     if (!client) {
       return {
         success: false,
-        error: new InvalidClientError("Invalid client_id or redirect_uri or scope"),
+        error: new InvalidClientError(
+          "Invalid client_id or redirect_uri or scope",
+        ),
       };
     }
 
@@ -260,9 +329,14 @@ export class AuthorizationCodeGrantFlow<
     };
   }
 
-  async initiateAuthorization(request: Request): Promise<AuthorizationCodeInitiationResponse> {
+  async initiateAuthorization(
+    request: Request,
+  ): Promise<AuthorizationCodeInitiationResponse> {
     if (request.method !== "GET") {
-      return { success: false, error: new InvalidRequestError("Method Not Allowed") };
+      return {
+        success: false,
+        error: new InvalidRequestError("Method Not Allowed"),
+      };
     }
 
     return await this.getAuthorizationCodeEndpointContext(request);
@@ -273,7 +347,10 @@ export class AuthorizationCodeGrantFlow<
     reqBody: AuthReqBody,
   ): Promise<AuthorizationCodeProcessResponse> {
     if (request.method !== "POST") {
-      return { success: false, error: new InvalidRequestError("Method Not Allowed") };
+      return {
+        success: false,
+        error: new InvalidRequestError("Method Not Allowed"),
+      };
     }
 
     const context = await this.getAuthorizationCodeEndpointContext(request);
@@ -282,8 +359,15 @@ export class AuthorizationCodeGrantFlow<
       return context;
     }
 
-    const { client, responseType, redirectUri, scope, state, codeChallenge, nonce } =
-      context.context;
+    const {
+      client,
+      responseType,
+      redirectUri,
+      scope,
+      state,
+      codeChallenge,
+      nonce,
+    } = context.context;
 
     const user = await this.#model.getUserForAuthentication(
       {
@@ -306,28 +390,58 @@ export class AuthorizationCodeGrantFlow<
       };
     }
 
-    const code = await this.#model.generateAuthorizationCode({
-      client,
-      responseType,
-      redirectUri,
-      scope: [...scope],
-      state,
-      codeChallenge,
-      nonce,
-    }, user);
+    const codeResult = await this.#model.generateAuthorizationCode(
+      {
+        client,
+        responseType,
+        redirectUri,
+        scope: [...scope],
+        state,
+        codeChallenge,
+        nonce,
+      },
+      user,
+    );
 
-    if (!code) {
-      return { success: false, error: new ServerError("Failed to generate authorization code") };
+    if (!codeResult) {
+      return {
+        success: false,
+        error: new ServerError("Failed to generate authorization code"),
+      };
+    }
+
+    if (codeResult.type === "deny") {
+      return {
+        success: false,
+        error: new AccessDeniedError(codeResult.message),
+      };
+    }
+
+    if (codeResult.type === "continue") {
+      return {
+        success: true,
+        type: codeResult.type,
+        continueResponse: {
+          message: codeResult.message,
+          client,
+          user,
+          redirectUri,
+          scope: [...scope],
+          state,
+          nonce,
+        },
+      };
     }
 
     return {
       success: true,
+      type: codeResult.type,
       authorizationCodeResponse: {
         client,
         user,
         redirectUri,
         scope: [...scope],
-        code,
+        code: codeResult.code,
         state,
         nonce,
       },
@@ -371,7 +485,10 @@ export class AuthorizationCodeGrantFlow<
       };
     }
 
-    return { success: false, error: new InvalidRequestError("Unsupported HTTP method") };
+    return {
+      success: false,
+      error: new InvalidRequestError("Unsupported HTTP method"),
+    };
   }
 
   /**
@@ -383,7 +500,10 @@ export class AuthorizationCodeGrantFlow<
   async token(request: Request): Promise<OAuth2AuthFlowTokenResponse> {
     const req = request.clone();
     if (req.method !== "POST") {
-      return { success: false, error: new InvalidRequestError("Method Not Allowed") };
+      return {
+        success: false,
+        error: new InvalidRequestError("Method Not Allowed"),
+      };
     }
 
     let body: unknown;
@@ -405,7 +525,10 @@ export class AuthorizationCodeGrantFlow<
     } else if (contentType.includes("application/json")) {
       body = req.json ? await req.json() : null;
     } else {
-      return { success: false, error: new InvalidRequestError("Unsupported Media Type") };
+      return {
+        success: false,
+        error: new InvalidRequestError("Unsupported Media Type"),
+      };
     }
 
     if (body && typeof body === "object") {
@@ -427,11 +550,17 @@ export class AuthorizationCodeGrantFlow<
 
     // Validate that the grant type in the request body matches this grant type
     if (grantTypeInBody !== this.grantType) {
-      return { success: false, error: new UnsupportedGrantTypeError("Unsupported grant type") };
+      return {
+        success: false,
+        error: new UnsupportedGrantTypeError("Unsupported grant type"),
+      };
     }
 
     if (!codeInBody) {
-      return { success: false, error: new InvalidRequestError("Missing authorization code") };
+      return {
+        success: false,
+        error: new InvalidRequestError("Missing authorization code"),
+      };
     }
 
     // Validate client authentication credentials using the registered client authentication methods
@@ -445,14 +574,17 @@ export class AuthorizationCodeGrantFlow<
     if (!error) {
       // If clientId is missing, return 401 error
       if (!clientId) {
-        return { success: false, error: new InvalidClientError("Invalid client credentials") };
+        return {
+          success: false,
+          error: new InvalidClientError("Invalid client credentials"),
+        };
       }
 
       // e.g. for DPoP token type, we need to validate the token request before validating client credentials
-      const tokenTypeValidationResponse: TokenTypeValidationResponse =
-        this._tokenType.isValidTokenRequest
-          ? await this._tokenType.isValidTokenRequest(request.clone())
-          : { isValid: true };
+      const tokenTypeValidationResponse: TokenTypeValidationResponse = this
+          ._tokenType.isValidTokenRequest
+        ? await this._tokenType.isValidTokenRequest(request.clone())
+        : { isValid: true };
       if (!tokenTypeValidationResponse.isValid) {
         return {
           success: false,
@@ -479,14 +611,19 @@ export class AuthorizationCodeGrantFlow<
 
       // If client authentication fails, return 401 error
       if (!client) {
-        return { success: false, error: new InvalidClientError("Invalid client credentials") };
+        return {
+          success: false,
+          error: new InvalidClientError("Invalid client credentials"),
+        };
       }
 
       // validate that client is allowed to use authorization code grant type
       if (!client.grants || !client.grants.includes(this.grantType)) {
         return {
           success: false,
-          error: new UnauthorizedClientError("Unauthorized client for this grant type"),
+          error: new UnauthorizedClientError(
+            "Unauthorized client for this grant type",
+          ),
         };
       }
 
@@ -504,26 +641,38 @@ export class AuthorizationCodeGrantFlow<
       // generate access token from client, valid scope,
       // and any other relevant information,
       // using the model's generateAccessToken() and generateRefreshToken() methods
-      const accessToken = await this.#model.generateAccessToken?.(
+      const accessTokenResult = await this.#model.generateAccessToken?.(
         // avoid mutation
         { ...grantContext },
       );
 
       // If token generation fails
-      if (!accessToken) {
-        return { success: false, error: new ServerError("Failed to generate access token") };
+      if (!accessTokenResult) {
+        return {
+          success: false,
+          error: new ServerError("Failed to generate access token"),
+        };
+      }
+
+      const tokenResponse: OAuth2TokenResponseBody = {
+        access_token: typeof accessTokenResult === "string"
+          ? accessTokenResult
+          : accessTokenResult.accessToken,
+        token_type: this.tokenType,
+        expires_in: grantContext.accessTokenLifetime,
+        scope: typeof accessTokenResult === "object" ? accessTokenResult.scope?.join(" ") : "",
+      };
+
+      if (
+        typeof accessTokenResult === "object" &&
+        typeof accessTokenResult.refreshToken === "string"
+      ) {
+        tokenResponse.refresh_token = accessTokenResult.refreshToken;
       }
 
       return {
         success: true,
-        tokenResponse: {
-          access_token: accessToken,
-          token_type: this.tokenType,
-          expires_in: grantContext.accessTokenLifetime,
-          // TODO: include refresh token if applicable
-          // TODO: include scope (might be retrieved from generateAccessToken?)
-          scope: "",
-        },
+        tokenResponse,
       };
     }
 

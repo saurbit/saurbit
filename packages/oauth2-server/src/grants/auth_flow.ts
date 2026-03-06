@@ -1,3 +1,5 @@
+// grants/auth_flow.ts
+
 import { InvalidRequestError, OAuth2Error } from "../errors.ts";
 import { BearerTokenType } from "../token_types/bearer_token.ts";
 import { TokenType } from "../token_types/types.ts";
@@ -32,7 +34,15 @@ export interface OAuth2AuthFlowOptions {
   tokenUrl?: string;
 }
 
-export interface OAuth2GrantModel<TTokenRequest, TGrantContext> {
+export interface OAuth2AccessTokenResult {
+  accessToken: string;
+}
+
+export interface OAuth2GrantModel<
+  TTokenRequest,
+  TGrantContext,
+  TAccessToken extends OAuth2AccessTokenResult = OAuth2AccessTokenResult,
+> {
   /**
    * Retrieve a client by its id (and optionally verify its secret).
    */
@@ -40,7 +50,7 @@ export interface OAuth2GrantModel<TTokenRequest, TGrantContext> {
   /**
    * Generate an access token for the grant type.
    */
-  generateAccessToken(context: TGrantContext): Promise<string | undefined>;
+  generateAccessToken(context: TGrantContext): Promise<string | TAccessToken | undefined>;
 }
 
 export abstract class OAuth2AuthFlow {

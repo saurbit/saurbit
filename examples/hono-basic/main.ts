@@ -17,6 +17,7 @@ import {
   HtmlFormContent,
   HTTPRateLimitException,
 } from "./impl/authorization_code.ts";
+import { oauth2Redirect } from "./swagger_ui/oauth2_redirect.ts";
 
 const app = new Hono();
 
@@ -60,19 +61,27 @@ app.post("/authorize", async (c) => {
     // Here you would typically validate the user's credentials and then proceed with the authorization process
     const result = await authorizationCodeFlow.processAuthorizationFromHono(c);
     if (result.success) {
-      const { user, code, redirectUri, state } = result.authorizationCodeResponse;
-      console.log("Authorization successful:", { user: user?.username, code, state });
+      if (result.type === "code") {
+        const { user, code, redirectUri, state } = result.authorizationCodeResponse;
+        console.log("Authorization successful:", {
+          user: user?.username,
+          code,
+          state,
+        });
 
-      // In a real implementation, you would redirect the user to the client's redirect_uri with the authorization code and state as query parameters.
-      // Or you might render a consent page here for the user to authorize the client to access their resources.
+        // In a real implementation, you would redirect the user to the client's redirect_uri with the authorization code and state as query parameters.
+        // Or you might render a consent page here for the user to authorize the client to access their resources.
 
-      const searchParams = new URLSearchParams();
-      searchParams.set("code", code);
-      if (state) {
-        searchParams.set("state", state);
+        const searchParams = new URLSearchParams();
+        searchParams.set("code", code);
+        if (state) {
+          searchParams.set("state", state);
+        }
+
+        return c.redirect(`${redirectUri}?${searchParams.toString()}`);
+      } else {
+        return c.json({ message: "Consent page was not implemented" }, 500);
       }
-
-      return c.redirect(`${redirectUri}?${searchParams.toString()}`);
     } else {
       const error = result.error;
       console.log("Authorization endpoint error:", { error: error.name, message: error.message });
@@ -127,6 +136,7 @@ app.post(
   // Add OpenAPI documentation for this route, including the security requirements and response schema
   describeRoute({
     security: [
+      authorizationCodeFlow.toOpenAPIPathItem(["content:read", "content:write"]),
       clientCredentialsFlow.toOpenAPIPathItem(["content:read", "content:write"]),
     ],
     responses: {
@@ -182,7 +192,7 @@ app.get(
   openAPIRouteHandler(app, {
     documentation: {
       info: {
-        title: "Hono",
+        title: "Astre Hono t",
         version: "1.0.0",
         description: "API for greeting users",
       },
@@ -198,11 +208,7 @@ app.get(
 
 app.get("/docs/ui", swaggerUI({ url: "/openapi.json" }));
 // Serve the oauth2 redirect handler
-app.get("/docs/oauth2-redirect.html", (c) => {
-  return c.html(`<!doctype html><html><head><title>Swagger UI: OAuth2 Redirect</title></head><body>
-<script>'use strict';function run(){var o=window.opener.swaggerUIRedirectOauth2,s=o.state,r=o.redirectUrl,qp,arr;if(/code|token|error/.test(window.location.hash)){qp=window.location.hash.substring(1).replace('?','&');}else{qp=location.search.substring(1);}arr=qp.split("&");arr.forEach(function(v,i,_arr){_arr[i]='"'+v.replace('=','":"')+'"';});qp=qp?JSON.parse('{'+arr.join()+'}',function(key,value){return key?decodeURIComponent(value):value;}):{};if((o.auth.schema.get("flow")==="accessCode"||o.auth.schema.get("flow")==="authorizationCode"||o.auth.schema.get("flow")==="authorization_code")&&!o.auth.bearerFormat){window.history.replaceState({},window.document.title,window.location.pathname?window.location.pathname:'/');}if(qp.state===s){o.auth.code=qp.code;o.callback({auth:o.auth,redirectUrl:r});}else{o.callback({auth:o.auth,state:qp.state,redirectUrl:r,error:"State mismatch"});}}if(document.readyState!=='loading'){run();}else{document.addEventListener('DOMContentLoaded',run);}</script>
-</body></html>`);
-});
+app.get("/docs/oauth2-redirect.html", oauth2Redirect);
 
 app.get("/health", (c) => c.text("OK"));
 
