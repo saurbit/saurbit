@@ -49,7 +49,7 @@ export interface OAuth2RefreshTokenGrantContext {
 }
 
 /**
- * Raw refresh token request parameters for authorization code grant.
+ * Raw refresh token request parameters for refresh token grant.
  */
 export interface OAuth2RefreshTokenRequest {
   grantType: "refresh_token";
@@ -65,7 +65,7 @@ export interface OAuth2GrantModel<
   TAccessToken extends OAuth2AccessTokenResult = OAuth2AccessTokenResult,
 > {
   /**
-   * Retrieve a client by its id (and optionally verify its secret).
+   * Retrieve a client by its id and optionally verify its secret.
    */
   getClient(tokenRequest: TTokenRequest): Promise<OAuth2Client | undefined>;
   /**
@@ -185,16 +185,19 @@ export abstract class OAuth2AuthFlow {
     clientId?: string;
     clientSecret?: string;
     error?: OAuth2Error;
+    method?: TokenEndpointAuthMethod;
   }> {
     let clientId: string | undefined;
     let clientSecret: string | undefined;
     let error: OAuth2Error | undefined;
+    let method: TokenEndpointAuthMethod | undefined;
 
     for (const am of supported) {
       const amInstance = authMethodsInstances[am];
       if (amInstance) {
         const v = await amInstance.extractClientCredentials(req.clone());
         if (v.hasAuthMethod) {
+          method = amInstance.method;
           clientId = v.clientId;
           clientSecret = v.clientSecret;
           if (!v.clientId) {
@@ -215,6 +218,7 @@ export abstract class OAuth2AuthFlow {
       error,
       clientId,
       clientSecret,
+      method,
     };
   }
 

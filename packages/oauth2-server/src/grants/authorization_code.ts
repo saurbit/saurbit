@@ -8,6 +8,7 @@ import {
   ServerError,
   UnauthorizedClientError,
   UnsupportedGrantTypeError,
+  UnsupportedResponseTypeError,
 } from "../errors.ts";
 import { TokenTypeValidationResponse } from "../token_types/types.ts";
 import type { OAuth2Client, OAuth2TokenResponseBody } from "../types.ts";
@@ -63,6 +64,17 @@ export interface AuthorizationCodeTokenRequest {
   code: string;
   codeVerifier?: string;
   clientSecret?: string;
+  /**
+   * The redirect URI presented at the token endpoint.
+   *
+   * Per RFC 6749 §4.1.3, if a `redirect_uri` was included in the authorization
+   * request, the same value MUST be provided here and your `getClient()`
+   * implementation MUST verify that it matches the URI stored with the
+   * authorization code. Failing to do so allows authorization code injection
+   * across redirect URIs.
+   *
+   * @see https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
+   */
   redirectUri?: string;
 }
 
@@ -77,7 +89,10 @@ export interface AuthorizationCodeEndpointContext {
   redirectUri: string;
   scope: string[];
   state?: string;
+  /** PKCE code challenge (if provided). */
   codeChallenge?: string;
+  /** PKCE code challenge method (`plain` | `S256`). */
+  codeChallengeMethod?: "plain" | "S256";
   /**
    * for OpenID Connect, the nonce parameter is required in the authorization request and should be included in the context for generating the authorization code, so that it can be associated with the authorization code and later included in the ID token when exchanging the authorization code for tokens at the token endpoint.
    * @see https://openid.net/specs/openid-connect-core-1_0.html#AuthorizationEndpoint
@@ -95,7 +110,10 @@ export interface AuthorizationCodeEndpointRequest {
   redirectUri: string;
   scope?: string[];
   state?: string;
+  /** PKCE code challenge (if provided). */
   codeChallenge?: string;
+  /** PKCE code challenge method (`plain` | `S256`). */
+  codeChallengeMethod?: "plain" | "S256";
   /**
    * for OpenID Connect, the nonce parameter is required in the authorization request and should be included in the context for generating the authorization code, so that it can be associated with the authorization code and later included in the ID token when exchanging the authorization code for tokens at the token endpoint.
    * @see https://openid.net/specs/openid-connect-core-1_0.html#AuthorizationEndpoint
@@ -199,6 +217,12 @@ export interface AuthorizationCodeAccessTokenResult extends OAuth2AccessTokenRes
   scope?: string[];
 
   refreshToken?: string;
+
+  /**
+   * For OpenID Connect, an ID token can also be returned from the token endpoint when exchanging the authorization code for tokens, and it should be included in the access token result so that it can be returned to the client in the token response.
+   * @see https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
+   */
+  idToken?: string;
 }
 
 export type AuthorizationCodeGeneratorResult =
@@ -218,6 +242,25 @@ export interface AuthorizationCodeModel<
     AuthorizationCodeGrantContext,
     AuthorizationCodeAccessTokenResult
   > {
+  /**
+   * Retrieve and validate the client for an authorization code or refresh token request.
+   *
+   * When `tokenRequest.grantType === "authorization_code"`, implementations MUST:
+   * 1. Verify the `code` is valid and has not already been used (one-time use).
+   * 2. Verify the `clientId` matches the client that requested the code.
+   * 3. If `redirectUri` is present, verify it is identical to the `redirect_uri`
+   *    used in the original authorization request (RFC 6749 §4.1.3). Omitting
+   *    this check enables authorization code injection attacks.
+   * 4. If `codeVerifier` is present, verify it against the stored `code_challenge`
+   *    using the stored `code_challenge_method` (RFC 7636 §4.6).
+   *
+   * @see https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
+   * @see https://datatracker.ietf.org/doc/html/rfc7636#section-4.6
+   */
+  getClient(
+    tokenRequest: AuthorizationCodeTokenRequest | OAuth2RefreshTokenRequest,
+  ): Promise<OAuth2Client | undefined>;
+
   getClientForAuthentication(
     authRequest: AuthorizationCodeEndpointRequest,
   ): Promise<OAuth2Client | undefined>;
@@ -285,6 +328,11 @@ export class AuthorizationCodeGrantFlow<
     const state = query.get("state") || undefined;
     const codeChallenge = query.get("code_challenge") || undefined;
     const nonce = query.get("nonce") || undefined;
+    const tmpCodeChallengeMethod = query.get("code_challenge_method");
+    const codeChallengeMethod: "S256" | "plain" | undefined =
+      tmpCodeChallengeMethod === "S256" || tmpCodeChallengeMethod === "plain"
+        ? tmpCodeChallengeMethod
+        : undefined;
 
     if (!clientId) {
       return {
@@ -297,7 +345,7 @@ export class AuthorizationCodeGrantFlow<
     if (responseType !== "code") {
       return {
         success: false,
-        error: new UnsupportedGrantTypeError("Unsupported response type"),
+        error: new UnsupportedResponseTypeError("Unsupported response type"),
         redirectable: false,
       };
     }
@@ -320,13 +368,14 @@ export class AuthorizationCodeGrantFlow<
       scope: scope ? scope.split(" ") : undefined,
       state,
       codeChallenge,
+      codeChallengeMethod,
       nonce,
     });
 
     if (!client) {
       return {
         success: false,
-        error: new InvalidClientError(
+        error: new InvalidRequestError(
           "Invalid client_id or redirect_uri or scope",
         ),
         redirectable: false,
@@ -352,6 +401,7 @@ export class AuthorizationCodeGrantFlow<
         scope: validatedScopes,
         state,
         codeChallenge,
+        codeChallengeMethod,
         nonce,
       },
     };
@@ -400,6 +450,7 @@ export class AuthorizationCodeGrantFlow<
       scope,
       state,
       codeChallenge,
+      codeChallengeMethod,
       nonce,
     } = context.context;
 
@@ -411,6 +462,7 @@ export class AuthorizationCodeGrantFlow<
         scope: [...scope],
         state,
         codeChallenge,
+        codeChallengeMethod,
         nonce,
       },
       reqBody,
@@ -428,6 +480,7 @@ export class AuthorizationCodeGrantFlow<
           scope: [...scope],
           state,
           codeChallenge,
+          codeChallengeMethod,
           nonce,
         },
         message: userResult?.message,
@@ -442,6 +495,7 @@ export class AuthorizationCodeGrantFlow<
         scope: [...scope],
         state,
         codeChallenge,
+        codeChallengeMethod,
         nonce,
       },
       userResult.user,
@@ -640,7 +694,7 @@ export class AuthorizationCodeGrantFlow<
     }
 
     // Validate client authentication credentials using the registered client authentication methods
-    const { clientId, clientSecret, error } = await this.extractClientCredentials(
+    const { clientId, clientSecret, error, method: clientAuthMethod } = await this.extractClientCredentials(
       request.clone(),
       this.clientAuthMethods,
       this.getTokenEndpointAuthMethods(),
@@ -656,6 +710,16 @@ export class AuthorizationCodeGrantFlow<
         };
       }
 
+      if (grantTypeInBody === "authorization_code" && clientAuthMethod === "none" && !codeVerifierInBody) {
+        // If the client authentication method is "none", then PKCE verification is required for public clients (RFC 7636 §4.1.2).
+        return {
+          success: false,
+          error: new InvalidRequestError(
+            "Public clients must use PKCE with the authorization code grant",
+          ),
+        };
+      }
+
       // e.g. for DPoP token type, we need to validate the token request before validating client credentials
       const tokenTypeValidationResponse: TokenTypeValidationResponse = this
           ._tokenType.isValidTokenRequest
@@ -664,7 +728,7 @@ export class AuthorizationCodeGrantFlow<
       if (!tokenTypeValidationResponse.isValid) {
         return {
           success: false,
-          error: new InvalidClientError(
+          error: new InvalidRequestError(
             tokenTypeValidationResponse.message || "Invalid token request",
           ),
         };
@@ -782,7 +846,12 @@ export class AuthorizationCodeGrantFlow<
         : accessTokenResult.accessToken,
       token_type: this.tokenType,
       expires_in: context.accessTokenLifetime,
-      scope: typeof accessTokenResult === "object" ? accessTokenResult.scope?.join(" ") : "",
+      scope: typeof accessTokenResult === "object" && accessTokenResult.scope
+        ? accessTokenResult.scope.join(" ")
+        : undefined,
+      id_token: typeof accessTokenResult === "object" && accessTokenResult.idToken
+        ? accessTokenResult.idToken
+        : undefined,
     };
 
     if (

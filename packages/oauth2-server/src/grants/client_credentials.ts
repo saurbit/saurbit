@@ -138,7 +138,7 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
       if (!tokenTypeValidationResponse.isValid) {
         return {
           success: false,
-          error: new InvalidClientError(
+          error: new InvalidRequestError(
             tokenTypeValidationResponse.message || "Invalid token request",
           ),
         };
@@ -210,7 +210,7 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
             : accessTokenResult.accessToken,
           token_type: this.tokenType,
           expires_in: grantContext.accessTokenLifetime,
-          scope: grantContext.scope.join(" "),
+          scope: grantContext.scope.length > 0 ? grantContext.scope.join(" ") : undefined,
         },
       };
     }
