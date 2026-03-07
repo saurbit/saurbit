@@ -122,36 +122,18 @@ export interface AuthorizationCodeEndpointRequest {
   nonce?: string;
 }
 
-export interface AuthorizationCodeEndpointContinueResponse {
+export interface AuthorizationCodeEndpointContinueResponse
+  extends AuthorizationCodeEndpointContext {
   user: AuthorizationCodeUser;
-  client: OAuth2Client;
-  redirectUri: string;
-  scope: string[];
   message?: string;
-  state?: string;
-  /**
-   * for OpenID Connect, the nonce parameter is required in the authorization request and should be included in the context for generating the authorization code, so that it can be associated with the authorization code and later included in the ID token when exchanging the authorization code for tokens at the token endpoint.
-   * @see https://openid.net/specs/openid-connect-core-1_0.html#AuthorizationEndpoint
-   * @see https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
-   */
-  nonce?: string;
   error?: never;
   [key: string]: unknown;
 }
 
-export interface AuthorizationCodeEndpointCodeResponse {
+export interface AuthorizationCodeEndpointCodeResponse
+  extends AuthorizationCodeEndpointContext {
   user: AuthorizationCodeUser;
-  client: OAuth2Client;
-  redirectUri: string;
-  scope: string[];
   code: string;
-  state?: string;
-  /**
-   * for OpenID Connect, the nonce parameter is required in the authorization request and should be included in the context for generating the authorization code, so that it can be associated with the authorization code and later included in the ID token when exchanging the authorization code for tokens at the token endpoint.
-   * @see https://openid.net/specs/openid-connect-core-1_0.html#AuthorizationEndpoint
-   * @see https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
-   */
-  nonce?: string;
   error?: never;
   [key: string]: unknown;
 }
@@ -329,10 +311,13 @@ export class AuthorizationCodeGrantFlow<
     const codeChallenge = query.get("code_challenge") || undefined;
     const nonce = query.get("nonce") || undefined;
     const tmpCodeChallengeMethod = query.get("code_challenge_method");
-    const codeChallengeMethod: "S256" | "plain" | undefined =
-      tmpCodeChallengeMethod === "S256" || tmpCodeChallengeMethod === "plain"
-        ? tmpCodeChallengeMethod
-        : undefined;
+    const codeChallengeMethod: "S256" | "plain" | undefined = tmpCodeChallengeMethod === "S256"
+      ? "S256"
+      : tmpCodeChallengeMethod === "plain"
+        ? "plain"
+        : codeChallenge
+          ? "plain" // RFC 7636 §4.3 default
+          : undefined;
 
     if (!clientId) {
       return {
@@ -448,7 +433,6 @@ export class AuthorizationCodeGrantFlow<
       redirectUri,
       scope,
       state,
-      nonce,
     } = context.context;
 
     const userResult = await this.#model.getUserForAuthentication(
@@ -507,13 +491,10 @@ export class AuthorizationCodeGrantFlow<
       return {
         type: codeResult.type,
         continueResponse: {
+          ...context.context,
           message: codeResult.message,
-          client,
           user: userResult.user,
-          redirectUri,
           scope: [...scope],
-          state,
-          nonce,
         },
       };
     }
@@ -521,13 +502,10 @@ export class AuthorizationCodeGrantFlow<
     return {
       type: codeResult.type,
       authorizationCodeResponse: {
-        client,
-        user: userResult.user,
-        redirectUri,
+        ...context.context,
         scope: [...scope],
-        code: codeResult.code,
-        state,
-        nonce,
+        user: userResult.user,
+        code: codeResult.code
       },
     };
   }
@@ -674,11 +652,12 @@ export class AuthorizationCodeGrantFlow<
     }
 
     // Validate client authentication credentials using the registered client authentication methods
-    const { clientId, clientSecret, error, method: clientAuthMethod } = await this.extractClientCredentials(
-      request.clone(),
-      this.clientAuthMethods,
-      this.getTokenEndpointAuthMethods(),
-    );
+    const { clientId, clientSecret, error, method: clientAuthMethod } = await this
+      .extractClientCredentials(
+        request.clone(),
+        this.clientAuthMethods,
+        this.getTokenEndpointAuthMethods(),
+      );
 
     // If the request contains client authentication credentials, validate them
     if (!error) {
@@ -690,7 +669,10 @@ export class AuthorizationCodeGrantFlow<
         };
       }
 
-      if (grantTypeInBody === "authorization_code" && clientAuthMethod === "none" && !codeVerifierInBody) {
+      if (
+        grantTypeInBody === "authorization_code" && clientAuthMethod === "none" &&
+        !codeVerifierInBody
+      ) {
         // If the client authentication method is "none", then PKCE verification is required for public clients (RFC 7636 §4.1.2).
         return {
           success: false,
@@ -702,7 +684,7 @@ export class AuthorizationCodeGrantFlow<
 
       // e.g. for DPoP token type, we need to validate the token request before validating client credentials
       const tokenTypeValidationResponse: TokenTypeValidationResponse = this
-          ._tokenType.isValidTokenRequest
+        ._tokenType.isValidTokenRequest
         ? await this._tokenType.isValidTokenRequest(request.clone())
         : { isValid: true };
       if (!tokenTypeValidationResponse.isValid) {
