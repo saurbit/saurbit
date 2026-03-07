@@ -56,6 +56,8 @@ export function oauth2Redirect(c: Context) {
           );
         }
         
+        /*
+        // this sends a cached code which is not correct behavior for the authorization code flow, but is left here for reference
         if (isAuthCodeFlow && redirect.auth.code) {
           // Already have a code
           redirect.callback({
@@ -64,7 +66,9 @@ export function oauth2Redirect(c: Context) {
             isValid: stateMatches,
             redirectUrl: redirectUrl
           });
-        } else if (isAuthCodeFlow) {
+        } else 
+        */
+        if (isAuthCodeFlow) {
           if (!stateMatches) {
             // State mismatch warning
             redirect.errCb({
