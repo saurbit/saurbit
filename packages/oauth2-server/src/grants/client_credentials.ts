@@ -63,7 +63,7 @@ export interface ClientCredentialsGrantFlowOptions extends OAuth2AuthFlowOptions
   model: ClientCredentialsModel;
 }
 
-export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements ClientCredentialsGrant {
+export abstract class AbstractClientCredentialsGrantFlow extends OAuth2AuthFlow implements ClientCredentialsGrant {
   readonly grantType = "client_credentials" as const;
   readonly #model: ClientCredentialsModel;
 
@@ -217,7 +217,9 @@ export class ClientCredentialsGrantFlow extends OAuth2AuthFlow implements Client
 
     return { success: false, error };
   }
+}
 
+export class ClientCredentialsGrantFlow extends AbstractClientCredentialsGrantFlow {
   toOpenAPISecurityScheme() {
     return {
       [this.getSecuritySchemeName()]: {
