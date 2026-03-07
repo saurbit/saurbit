@@ -130,6 +130,5 @@ export function oauth2Redirect(c: Context) {
       }
     </script>
   </body>
-</html>`,
-  );
+</html>`);
 }

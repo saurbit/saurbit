@@ -70,8 +70,16 @@ app.post("/authorize", async (c) => {
       if (result.redirectable) {
         // If the error is redirectable, redirect the user to the client's redirect_uri with the error and state as query parameters
         const qs = [
-          `error=${encodeURIComponent(error instanceof AccessDeniedError ? error.errorCode : "invalid_request")}`,
-          `error_description=${encodeURIComponent(error instanceof AccessDeniedError ? error.message : "Invalid request")}`,
+          `error=${
+            encodeURIComponent(
+              error instanceof AccessDeniedError ? error.errorCode : "invalid_request",
+            )
+          }`,
+          `error_description=${
+            encodeURIComponent(
+              error instanceof AccessDeniedError ? error.message : "Invalid request",
+            )
+          }`,
           result.state ? `state=${encodeURIComponent(result.state)}` : null,
         ].filter(Boolean).join("&");
 
