@@ -113,7 +113,8 @@ export const oidcAuthorizationCodeFlow = new HonoOIDCAuthorizationCodeFlow({
       codeChallenge: _cc,
       scope,
       state: _s,
-      
+      nonce: _n,
+      prompt: _p,
     }, user) => {
       console.log("generateAuthorizationCode called with:", {
         client: _c,
