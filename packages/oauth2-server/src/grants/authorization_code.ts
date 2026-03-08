@@ -130,8 +130,7 @@ export interface AuthorizationCodeEndpointContinueResponse
   [key: string]: unknown;
 }
 
-export interface AuthorizationCodeEndpointCodeResponse
-  extends AuthorizationCodeEndpointContext {
+export interface AuthorizationCodeEndpointCodeResponse extends AuthorizationCodeEndpointContext {
   user: AuthorizationCodeUser;
   code: string;
   error?: never;
@@ -314,10 +313,10 @@ export class AuthorizationCodeGrantFlow<
     const codeChallengeMethod: "S256" | "plain" | undefined = tmpCodeChallengeMethod === "S256"
       ? "S256"
       : tmpCodeChallengeMethod === "plain"
-        ? "plain"
-        : codeChallenge
-          ? "plain" // RFC 7636 §4.3 default
-          : undefined;
+      ? "plain"
+      : codeChallenge
+      ? "plain" // RFC 7636 §4.3 default
+      : undefined;
 
     if (!clientId) {
       return {
@@ -505,7 +504,7 @@ export class AuthorizationCodeGrantFlow<
         ...context.context,
         scope: [...scope],
         user: userResult.user,
-        code: codeResult.code
+        code: codeResult.code,
       },
     };
   }
@@ -684,7 +683,7 @@ export class AuthorizationCodeGrantFlow<
 
       // e.g. for DPoP token type, we need to validate the token request before validating client credentials
       const tokenTypeValidationResponse: TokenTypeValidationResponse = this
-        ._tokenType.isValidTokenRequest
+          ._tokenType.isValidTokenRequest
         ? await this._tokenType.isValidTokenRequest(request.clone())
         : { isValid: true };
       if (!tokenTypeValidationResponse.isValid) {

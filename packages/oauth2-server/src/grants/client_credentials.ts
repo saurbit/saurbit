@@ -63,7 +63,8 @@ export interface ClientCredentialsGrantFlowOptions extends OAuth2AuthFlowOptions
   model: ClientCredentialsModel;
 }
 
-export abstract class AbstractClientCredentialsGrantFlow extends OAuth2AuthFlow implements ClientCredentialsGrant {
+export abstract class AbstractClientCredentialsGrantFlow extends OAuth2AuthFlow
+  implements ClientCredentialsGrant {
   readonly grantType = "client_credentials" as const;
   readonly #model: ClientCredentialsModel;
 

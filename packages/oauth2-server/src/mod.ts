@@ -57,7 +57,7 @@ export type {
   OAuth2AuthFlowTokenResponse,
   OAuth2GrantModel,
   OAuth2RefreshTokenGrantContext,
-  OAuth2RefreshTokenRequest
+  OAuth2RefreshTokenRequest,
 } from "./grants/auth_flow.ts";
 export { OAuth2AuthFlow } from "./grants/auth_flow.ts";
 export type {
