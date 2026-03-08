@@ -1,5 +1,8 @@
 import { InvalidRequestError, ServerError } from "../errors.ts";
-import { OAuth2RefreshTokenGrantContext } from "../grants/auth_flow.ts";
+import {
+  OAuth2AuthFlowTokenResponse,
+  OAuth2RefreshTokenGrantContext,
+} from "../grants/auth_flow.ts";
 import {
   AbstractAuthorizationCodeGrantFlow,
   AuthorizationCodeAccessTokenResult,
@@ -10,7 +13,7 @@ import {
   AuthorizationCodeReqBody,
 } from "../grants/authorization_code.ts";
 import { normalizeUrl } from "../utils/normalize_url.ts";
-import { OpenIDFlowTokenResponse, OpenIDUserInfo } from "./types.ts";
+import { OpenIDUserInfo } from "./types.ts";
 
 /*
 OIDC requires:
@@ -48,8 +51,8 @@ export interface OpenIDAuthorizationCodeModel<
   generateAccessTokenFromRefreshToken?(
     context: OAuth2RefreshTokenGrantContext,
   ):
-    | Promise<OpenIDAuthorizationCodeAccessTokenResult | undefined>
-    | OpenIDAuthorizationCodeAccessTokenResult
+    | Promise<AuthorizationCodeAccessTokenResult | undefined>
+    | AuthorizationCodeAccessTokenResult
     | undefined;
 
   /**
@@ -212,7 +215,7 @@ export class OpenIDAuthorizationCodeFlow<
   ): Promise<AuthorizationCodeInitiationResponse> {
     const query = new URL(request.url).searchParams;
     const scope = query.get("scope") || undefined;
-    if (scope && !scope.split(" ").includes("openid")) {
+    if (!scope || !scope.split(" ").includes("openid")) {
       return {
         success: false,
         error: new InvalidRequestError(
@@ -233,31 +236,36 @@ export class OpenIDAuthorizationCodeFlow<
     };
   }
 
-  override async token(request: Request): Promise<OpenIDFlowTokenResponse> {
+  override async token(request: Request): Promise<OAuth2AuthFlowTokenResponse> {
     const r = await super.token(request);
     if (r.success) {
       const tokenResponse = r.tokenResponse;
+      const scope = tokenResponse.scope ? tokenResponse.scope.split(" ") : [];
+      if (!scope.includes("openid")) {
+        return {
+          success: false,
+          error: new ServerError("The 'openid' scope is required when an ID Token is returned"),
+        };
+      }
       if (tokenResponse.id_token && typeof tokenResponse.id_token === "string") {
-        const scope = tokenResponse.scope ? tokenResponse.scope.split(" ") : [];
-        if (!scope.includes("openid")) {
-          return {
-            success: false,
-            error: new ServerError("The 'openid' scope is required when an ID Token is returned"),
-          };
-        }
         return {
           success: true,
           tokenResponse: {
             ...tokenResponse,
-            scope: tokenResponse.scope ?? "openid",
             id_token: tokenResponse.id_token,
           },
+          grantType: r.grantType,
+        };
+      } else if (r.grantType === "refresh_token") {
+        // For refresh token grant, the ID token is optional according to the OpenID Connect specification, so we can allow the token response to succeed even if the ID token is not included. However, if the openid scope is included in the refresh token request, we should ideally return a new ID token in the response. If the model's generateAccessTokenFromRefreshToken method does not return an ID token, we can still return a successful response but without the ID token.
+        return r;
+      } else {
+        return {
+          success: false,
+          error: new ServerError("ID Token is required for OpenID Connect authorization code flow"),
         };
       }
     }
-    return {
-      success: false,
-      error: new ServerError("ID Token is required for OpenID Connect authorization code flow"),
-    };
+    return r;
   }
 }

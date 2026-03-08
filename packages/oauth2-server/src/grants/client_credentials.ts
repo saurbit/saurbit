@@ -213,6 +213,7 @@ export abstract class AbstractClientCredentialsGrantFlow extends OAuth2AuthFlow
           expires_in: grantContext.accessTokenLifetime,
           scope: grantContext.scope.length > 0 ? grantContext.scope.join(" ") : undefined,
         },
+        grantType: grantContext.grantType,
       };
     }
 

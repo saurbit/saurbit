@@ -16,7 +16,7 @@ import { OAuth2Client, OAuth2TokenResponseBody } from "../types.ts";
 import { evaluateStrategy, StrategyOptions, StrategyResult } from "../strategy.ts";
 
 export type OAuth2AuthFlowTokenResponse =
-  | { success: true; tokenResponse: OAuth2TokenResponseBody }
+  | { success: true; tokenResponse: OAuth2TokenResponseBody; grantType: string }
   | { success: false; error: OAuth2Error };
 
 export interface OAuth2AuthFlowOptions {

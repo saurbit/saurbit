@@ -826,6 +826,7 @@ export abstract class AbstractAuthorizationCodeGrantFlow<
     return {
       success: true,
       tokenResponse,
+      grantType: context.grantType,
     };
   }
 }

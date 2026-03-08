@@ -97,7 +97,7 @@ export type {
 export { OpenIDAuthorizationCodeFlow } from "./open_id/open_id_authorization_code.ts";
 export type { OpenIDClientCredentialsFlowOptions } from "./open_id/open_id_client_credentials.ts";
 export { OpenIDClientCredentialsFlow } from "./open_id/open_id_client_credentials.ts";
-export type { OpenIDFlowTokenResponse, OpenIDTokenResponseBody } from "./open_id/types.ts";
+export type { OpenIDUserInfo } from "./open_id/types.ts";
 
 export { BearerTokenType, type BearerTokenValidation } from "./token_types/bearer_token.ts";
 export type { TokenType, TokenTypeValidationResponse } from "./token_types/types.ts";
