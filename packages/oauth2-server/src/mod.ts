@@ -27,6 +27,7 @@ export {
   UnauthorizedRequestError,
   UnsupportedGrantTypeError,
   UnsupportedResponseTypeError,
+  OAuth2Errors,
 } from "./errors.ts";
 
 export type {
@@ -133,6 +134,7 @@ export type {
 export {
   evaluateStrategy,
   StrategyError,
+  StrategyErrors,
   StrategyInsufficientScopeError,
   StrategyInternalError,
   StrategyInvalidTokenError,

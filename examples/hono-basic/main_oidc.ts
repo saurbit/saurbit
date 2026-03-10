@@ -11,11 +11,12 @@ import { swaggerUI } from "@hono/swagger-ui";
 
 import { UnauthorizedClientError, UnsupportedGrantTypeError } from "@saurbit/oauth2-server";
 
-import { clientCredentialsFlow } from "./impl/client_credentials.ts";
-import {
-  authorizationCodeFlow,
+import { oidcAuthorizationCodeFlow,
   HtmlFormContent,
-} from "./impl/authorization_code.ts";
+ } from "./impl/oidc_authorization_code.ts";
+
+import { oidcMultipleFlows } from "./impl/oidc.ts";
+
 import { oauth2Redirect } from "./swagger_ui/oauth2_redirect.ts";
 import { AccessDeniedError } from "@saurbit/oauth2-server";
 import { HTTPRateLimitException } from "./impl/common.ts";
@@ -47,7 +48,7 @@ app.get(
 );
 
 app.get("/authorize", async (c) => {
-  const result = await authorizationCodeFlow.handleAuthorizationEndpointFromHono(c);
+  const result = await oidcAuthorizationCodeFlow.handleAuthorizationEndpointFromHono(c);
   if (result.type === "initiated") {
     return c.html(HtmlFormContent({ usernameField: "username", passwordField: "password" }));
   } else if (result.type === "error") {
@@ -60,7 +61,7 @@ app.get("/authorize", async (c) => {
 app.post("/authorize", async (c) => {
   try {
     // Here you would typically validate the user's credentials and then proceed with the authorization process
-    const result = await authorizationCodeFlow.processAuthorizationFromHono(c);
+    const result = await oidcAuthorizationCodeFlow.processAuthorizationFromHono(c);
 
     if (result.type === "error") {
       // for security reasons, it is recommended to return a generic error message in production instead of the specific error message
@@ -166,12 +167,11 @@ const responseSchema = type({
 app.post(
   "/author",
   // Apply the authentication middleware to this route
-  clientCredentialsFlow.authorizeMiddleware(["content:read", "content:write"]),
+  oidcMultipleFlows.authorizeMiddleware(["content:read", "content:write"]),
   // Add OpenAPI documentation for this route, including the security requirements and response schema
   describeRoute({
     security: [
-      authorizationCodeFlow.toOpenAPIPathItem(["content:read", "content:write"]),
-      clientCredentialsFlow.toOpenAPIPathItem(["content:read", "content:write"]),
+      oidcMultipleFlows.toOpenAPIPathItem(["content:read", "content:write"]),
     ],
     responses: {
       200: {
@@ -202,7 +202,7 @@ app.post(
   async (c) => {
     console.log("Token endpoint called with body");
     //const result = await clientCredentialsFlow.tokenFromHono(c);
-    const result = await authorizationCodeFlow.tokenFromHono(c);
+    const result = await oidcMultipleFlows.tokenFromHono(c);
     if (result.success) {
       return c.json(result.tokenResponse);
     } else {
@@ -232,13 +232,17 @@ app.get(
       },
       components: {
         securitySchemes: {
-          ...authorizationCodeFlow.toOpenAPISecurityScheme(),
-          ...clientCredentialsFlow.toOpenAPISecurityScheme(),
+          ...oidcMultipleFlows.toOpenAPISecurityScheme(),
         },
       },
     },
   }),
 );
+
+app.get('/.well-known/openid-configuration', (c) => {
+  const config = oidcMultipleFlows.getDiscoveryConfiguration();
+  return c.json(config);
+});
 
 app.get("/docs/ui", swaggerUI({ url: "/openapi.json" }));
 // Serve the oauth2 redirect handler

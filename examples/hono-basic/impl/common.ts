@@ -1,6 +1,7 @@
 import { Context, Env } from "hono";
 import { OAuth2ServerEnv } from "../oauth2_hono_adapter/types.ts";
 import { StrategyVerifyTokenFunction } from "@saurbit/oauth2-server";
+import { HTTPException } from "hono/http-exception";
 
 export const verifyTokenFunction: StrategyVerifyTokenFunction<Context<Env & OAuth2ServerEnv>> = (
   _context,
@@ -22,3 +23,9 @@ export const verifyTokenFunction: StrategyVerifyTokenFunction<Context<Env & OAut
 
   return { isValid: false };
 };
+
+export class HTTPRateLimitException extends HTTPException {
+  constructor(message: string) {
+    super(429, { message });
+  }
+}

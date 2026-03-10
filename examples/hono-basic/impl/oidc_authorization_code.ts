@@ -5,17 +5,10 @@ import { StrategyInternalError } from "@saurbit/oauth2-server";
 import { BearerTokenType, HonoOIDCAuthorizationCodeFlow } from "../oauth2_hono_adapter/mod.ts";
 import { HTTPException } from "hono/http-exception";
 import { html } from "hono/html";
-import { verifyTokenFunction } from "./common.ts";
-import { HonoOIDCMultipleFlows } from "../oauth2_hono_adapter/oidc_multiple_flow.ts";
-
-export class HTTPRateLimitException extends HTTPException {
-  constructor(message: string) {
-    super(429, { message });
-  }
-}
+import { HTTPRateLimitException, verifyTokenFunction } from "./common.ts";
 
 export const oidcAuthorizationCodeFlow = new HonoOIDCAuthorizationCodeFlow({
-  discoveryUrl: "http://localhost/.well-known/openid-configuration",
+  discoveryUrl: "http://localhost:3000/.well-known/openid-configuration",
   jwksEndpoint: "/jwks",
   parseAuthorizationEndpointBody: async (context) => {
     const formData = await context.req.formData();
@@ -54,9 +47,9 @@ export const oidcAuthorizationCodeFlow = new HonoOIDCAuthorizationCodeFlow({
       if (clientId === "my-client") {
         return await Promise.resolve({
           id: "my-client",
-          redirectUris: ["http://localhost/callback"],
+          redirectUris: ["http://localhost:3000/callback"],
           grants: ["authorization_code"],
-          scopes: ["content:read", "content:write"],
+          scopes: ["openid", "content:read", "content:write"],
         });
       }
     },
@@ -162,7 +155,7 @@ export const oidcAuthorizationCodeFlow = new HonoOIDCAuthorizationCodeFlow({
             id: "my-client",
             redirectUris: ["http://localhost/callback"],
             grants: ["authorization_code"],
-            scopes: ["content:read", "content:write"],
+            scopes: ["openid", "content:read", "content:write"],
             metadata: {
               // You can include any additional metadata here that you want
               // to be available in the grant context for generating the access token
@@ -179,7 +172,7 @@ export const oidcAuthorizationCodeFlow = new HonoOIDCAuthorizationCodeFlow({
           id: "my-client",
           redirectUris: ["http://localhost/callback"],
           grants: ["authorization_code"],
-          scopes: ["content:read", "content:write"],
+          scopes: ["openid", "content:read", "content:write"],
           metadata: {
             // You can include any additional metadata here that you want
             // to be available in the grant context for generating the access token
@@ -476,12 +469,3 @@ export const HtmlFormContent = (props: {
         </body>
       </html>
     `;
-
-  export const oidcMultipleFlows = new HonoOIDCMultipleFlows({
-    flows: [oidcAuthorizationCodeFlow],
-    discoveryUrl: "http://localhost/.well-known/openid-configuration",
-    securitySchemeName: "honoOIDCMultipleFlows",
-    description: "Multiple OIDC Flows for Hono API",
-    jwksEndpoint: "/jwks",
-    tokenEndpoint: "/token",
-  });

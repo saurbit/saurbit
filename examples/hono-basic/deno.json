@@ -13,6 +13,7 @@
   },
   "tasks": {
     "dev": "deno run --allow-net --allow-env --watch main.ts",
+    "dev:oidc": "deno run --allow-net --allow-env --watch main_oidc.ts",
     "start": "deno run --allow-net --allow-env main.ts"
   }
 }

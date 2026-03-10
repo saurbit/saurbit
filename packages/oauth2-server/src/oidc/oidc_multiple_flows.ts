@@ -124,12 +124,12 @@ export class OIDCMultipleFlows<TFlow extends OIDCFlow = OIDCFlow> {
       token_endpoint_auth_methods_supported: string[];
       [key: string]: string | string[] | undefined;
     } = {
-      discoveryUrl: `${host}`,
+      issuer: `${host}`,
       authorization_endpoint: undefined,
       device_authorization_endpoint: undefined,
       token_endpoint: `${normalizeUrl(this.tokenEndpoint, host)}`,
       userinfo_endpoint: undefined,
-      jwks_uri: this.jwksEndpoint ? `${host}${normalizeUrl(this.jwksEndpoint, host)}` : undefined,
+      jwks_uri: this.jwksEndpoint ? `${normalizeUrl(this.jwksEndpoint, host)}` : undefined,
       registration_endpoint: undefined,
       grant_types_supported: [],
       token_endpoint_auth_methods_supported: [],
