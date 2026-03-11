@@ -238,7 +238,7 @@ app.get(
 );
 
 app.get("/.well-known/openid-configuration", (c) => {
-  const config = oidcMultipleFlows.getDiscoveryConfiguration();
+  const config = oidcMultipleFlows.getDiscoveryConfiguration(c.req.raw);
   return c.json(config);
 });
 

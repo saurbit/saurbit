@@ -119,7 +119,15 @@ export class OIDCMultipleFlows<TFlow extends OIDCFlow = OIDCFlow> {
    * @link https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
    */
   getDiscoveryConfiguration(req?: Request): Record<string, string | string[] | undefined> {
-    const host = new URL(this.getDiscoveryUrl()).origin;
+    let fullUrl: string | undefined;
+    if (req) {
+      const url = new URL(req.url);
+      const forwardedProto = req.headers.get("x-forwarded-proto");
+      const protocol = forwardedProto ? forwardedProto : url.protocol.replace(":", "");
+      fullUrl = protocol + "://" + url.host;
+    }
+
+    const host = typeof fullUrl === "string" ? fullUrl : new URL(this.getDiscoveryUrl()).origin;
 
     let wellKnownOpenIDConfig: {
       authorization_endpoint?: string;
@@ -141,6 +149,7 @@ export class OIDCMultipleFlows<TFlow extends OIDCFlow = OIDCFlow> {
     for (const flow of this.flows) {
       if (typeof flow.getDiscoveryConfiguration === "function") {
         const {
+          issuer: _unused_issuer,
           token_endpoint: _unused_token_endpoint,
           jwks_uri: _unused_jwks_uri,
           ...more
