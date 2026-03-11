@@ -66,7 +66,7 @@ export interface OIDCAuthenticationRequestParams {
    * - `select_account`: The authorization server should prompt the user to select an account if they are authenticated with multiple accounts. This can be used to allow users to choose which account they want to use for the authentication request.
    * Multiple values can be included in a space-separated list if more than one behavior is desired (e.g., `prompt=login consent` would require the user to both re-authenticate and provide consent). The `prompt` parameter is an important part of the OpenID Connect authentication flow, as it allows clients to control the user experience and ensure that users are properly authenticated and have given consent for the requested scopes.
    */
-  prompt?: "none" | "login" | "consent" | "select_account";
+  prompt?: ("none" | "login" | "consent" | "select_account")[];
 
   /**
    * The `max_age` parameter specifies the maximum age of the user's authentication in seconds. If the user's authentication is older than the specified time, the authorization server should prompt the user to re-authenticate. This parameter can be used by clients to ensure that users are recently authenticated, which can be important for security-sensitive applications. For example, a client might set `max_age=3600` to require users to re-authenticate if their last authentication was more than an hour ago. The `max_age` parameter is part of the OpenID Connect specification and can be included in the authorization request to enhance security by enforcing re-authentication when necessary.
@@ -324,7 +324,9 @@ export class OIDCAuthorizationCodeFlow<
 
     const nonce = query.get("nonce") || undefined;
     const tmpPrompt = query.get("prompt") || undefined;
-    const prompt = isPrompt(tmpPrompt) ? tmpPrompt : undefined;
+    const prompt = typeof tmpPrompt === "undefined"
+      ? undefined
+      : tmpPrompt.split(" ").filter(isPrompt);
     const rawMaxAge = query.get("max_age");
     const maxAge = rawMaxAge
       ? (Number.isFinite(parseInt(rawMaxAge, 10)) ? parseInt(rawMaxAge, 10) : undefined)

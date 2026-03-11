@@ -22,12 +22,12 @@ export {
   InvalidScopeError,
   InvalidTokenError,
   OAuth2Error,
+  OAuth2Errors,
   ServerError,
   UnauthorizedClientError,
   UnauthorizedRequestError,
   UnsupportedGrantTypeError,
   UnsupportedResponseTypeError,
-  OAuth2Errors,
 } from "./errors.ts";
 
 export type {

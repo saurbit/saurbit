@@ -11,9 +11,7 @@ import { swaggerUI } from "@hono/swagger-ui";
 
 import { UnauthorizedClientError, UnsupportedGrantTypeError } from "@saurbit/oauth2-server";
 
-import { oidcAuthorizationCodeFlow,
-  HtmlFormContent,
- } from "./impl/oidc_authorization_code.ts";
+import { HtmlFormContent, oidcAuthorizationCodeFlow } from "./impl/oidc_authorization_code.ts";
 
 import { oidcMultipleFlows } from "./impl/oidc.ts";
 
@@ -239,7 +237,7 @@ app.get(
   }),
 );
 
-app.get('/.well-known/openid-configuration', (c) => {
+app.get("/.well-known/openid-configuration", (c) => {
   const config = oidcMultipleFlows.getDiscoveryConfiguration();
   return c.json(config);
 });
