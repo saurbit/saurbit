@@ -67,7 +67,9 @@ export interface OAuth2GrantModel<
   /**
    * Retrieve a client by its id and optionally verify its secret.
    */
-  getClient(tokenRequest: TTokenRequest): Promise<OAuth2Client | undefined>;
+  getClient(
+    tokenRequest: TTokenRequest,
+  ): Promise<OAuth2Client | undefined> | OAuth2Client | undefined;
   /**
    * Generate an access token for the grant type.
    */
