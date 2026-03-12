@@ -59,27 +59,42 @@ export interface OAuth2RefreshTokenRequest {
   scope?: string[];
 }
 
+export interface OAuth2GetClientFunction<TRequestInfo> {
+  (requestInfo: TRequestInfo): Promise<OAuth2Client | undefined> | OAuth2Client | undefined;
+}
+
+export interface OAuth2GenerateAccessTokenFunction<
+  TGrantContext,
+  TAccessToken extends OAuth2AccessTokenResult | string,
+> {
+  (context: TGrantContext): Promise<TAccessToken | undefined> | TAccessToken | undefined;
+}
+
+export interface OAuth2GenerateAccessTokenFromRefreshTokenFunction<
+  TAccessToken extends OAuth2AccessTokenResult | string,
+> {
+  (
+    context: OAuth2RefreshTokenGrantContext,
+  ): Promise<TAccessToken | undefined> | TAccessToken | undefined;
+}
+
 export interface OAuth2GrantModel<
   TTokenRequest,
   TGrantContext,
-  TAccessToken extends OAuth2AccessTokenResult = OAuth2AccessTokenResult,
+  TAccessToken extends OAuth2AccessTokenResult | string = OAuth2AccessTokenResult | string,
 > {
   /**
    * Retrieve a client by its id and optionally verify its secret.
    */
-  getClient(
-    tokenRequest: TTokenRequest,
-  ): Promise<OAuth2Client | undefined> | OAuth2Client | undefined;
+  getClient: OAuth2GetClientFunction<TTokenRequest>;
   /**
    * Generate an access token for the grant type.
    */
-  generateAccessToken(
-    context: TGrantContext,
-  ): Promise<string | TAccessToken | undefined> | string | TAccessToken | undefined;
+  generateAccessToken: OAuth2GenerateAccessTokenFunction<TGrantContext, TAccessToken>;
 
-  generateAccessTokenFromRefreshToken?(
-    context: OAuth2RefreshTokenGrantContext,
-  ): Promise<string | TAccessToken | undefined> | string | TAccessToken | undefined;
+  generateAccessTokenFromRefreshToken?: OAuth2GenerateAccessTokenFromRefreshTokenFunction<
+    TAccessToken
+  >;
 }
 
 export abstract class OAuth2Flow {

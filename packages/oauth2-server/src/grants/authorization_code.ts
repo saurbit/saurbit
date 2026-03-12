@@ -17,6 +17,7 @@ import {
   OAuth2Flow,
   type OAuth2FlowOptions,
   type OAuth2FlowTokenResponse,
+  OAuth2GetClientFunction,
   type OAuth2GrantModel,
   OAuth2RefreshTokenGrantContext,
   OAuth2RefreshTokenRequest,
@@ -220,7 +221,7 @@ export interface AuthorizationCodeModel<
   OAuth2GrantModel<
     AuthorizationCodeTokenRequest | OAuth2RefreshTokenRequest,
     AuthorizationCodeGrantContext,
-    AuthorizationCodeAccessTokenResult
+    AuthorizationCodeAccessTokenResult | string
   > {
   /**
    * Retrieve and validate the client for an authorization code or refresh token request.
@@ -237,28 +238,24 @@ export interface AuthorizationCodeModel<
    * @see https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
    * @see https://datatracker.ietf.org/doc/html/rfc7636#section-4.6
    */
-  getClient(
-    tokenRequest: AuthorizationCodeTokenRequest | OAuth2RefreshTokenRequest,
-  ): Promise<OAuth2Client | undefined>;
+  getClient: OAuth2GetClientFunction<AuthorizationCodeTokenRequest | OAuth2RefreshTokenRequest>;
 
-  getClientForAuthentication(
-    authRequest: AuthorizationCodeEndpointRequest,
-  ): Promise<OAuth2Client | undefined>;
+  getClientForAuthentication: OAuth2GetClientFunction<AuthorizationCodeEndpointRequest>;
 
-  getUserForAuthentication(
+  getUserForAuthentication: (
     context: AuthorizationCodeEndpointContext,
     reqBody: AuthReqBody,
     request: Request,
-  ): Promise<
+  ) => Promise<
     | { type: "authenticated"; user: AuthorizationCodeUser }
     | { type: "unauthenticated"; message?: string }
     | undefined
   >;
 
-  generateAuthorizationCode(
+  generateAuthorizationCode: (
     context: AuthorizationCodeEndpointContext,
     user: AuthorizationCodeUser,
-  ): Promise<AuthorizationCodeGeneratorResult | undefined>;
+  ) => Promise<AuthorizationCodeGeneratorResult | undefined>;
 }
 
 /**

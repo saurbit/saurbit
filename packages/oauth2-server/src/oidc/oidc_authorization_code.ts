@@ -1,5 +1,10 @@
 import { InvalidRequestError, ServerError, UnsupportedResponseTypeError } from "../errors.ts";
-import { OAuth2FlowTokenResponse, OAuth2RefreshTokenGrantContext } from "../grants/flow.ts";
+import {
+  OAuth2FlowTokenResponse,
+  OAuth2GenerateAccessTokenFromRefreshTokenFunction,
+  OAuth2GenerateAccessTokenFunction,
+  OAuth2GetClientFunction,
+} from "../grants/flow.ts";
 import {
   AbstractAuthorizationCodeFlow,
   AuthorizationCodeAccessTokenResult,
@@ -15,7 +20,6 @@ import {
   AuthorizationCodeReqBody,
   AuthorizationCodeUser,
 } from "../grants/authorization_code.ts";
-import { OAuth2Client } from "../types.ts";
 import { normalizeUrl } from "../utils/normalize_url.ts";
 import { OIDCFlow, OIDCFlowExtendedOptions, OIDCUserInfo } from "./types.ts";
 
@@ -125,28 +129,8 @@ export interface OIDCAuthorizationCodeAccessTokenResult extends AuthorizationCod
   idToken: string;
 }
 
-export interface OIDCAuthorizationCodeModel<
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
-> extends AuthorizationCodeModel<AuthReqBody> {
-  getClientForAuthentication(
-    authRequest: OIDCAuthorizationCodeEndpointRequest,
-  ): Promise<OAuth2Client | undefined>;
-
-  generateAccessToken(
-    context: AuthorizationCodeGrantContext,
-  ):
-    | Promise<OIDCAuthorizationCodeAccessTokenResult | undefined>
-    | OIDCAuthorizationCodeAccessTokenResult
-    | undefined;
-
-  generateAccessTokenFromRefreshToken?(
-    context: OAuth2RefreshTokenGrantContext,
-  ):
-    | Promise<AuthorizationCodeAccessTokenResult | undefined>
-    | AuthorizationCodeAccessTokenResult
-    | undefined;
-
-  getUserForAuthentication(
+export interface OIDCGetUserForAuthenticationFunction<AuthReqBody> {
+  (
     context: OIDCAuthorizationCodeEndpointContext,
     reqBody: AuthReqBody,
     request: Request,
@@ -155,11 +139,28 @@ export interface OIDCAuthorizationCodeModel<
     | { type: "unauthenticated"; message?: string }
     | undefined
   >;
+}
 
-  generateAuthorizationCode(
+export interface OIDCAuthorizationCodeModel<
+  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
+> extends AuthorizationCodeModel<AuthReqBody> {
+  getClientForAuthentication: OAuth2GetClientFunction<OIDCAuthorizationCodeEndpointRequest>;
+
+  generateAccessToken: OAuth2GenerateAccessTokenFunction<
+    AuthorizationCodeGrantContext,
+    OIDCAuthorizationCodeAccessTokenResult
+  >;
+
+  generateAccessTokenFromRefreshToken?: OAuth2GenerateAccessTokenFromRefreshTokenFunction<
+    AuthorizationCodeAccessTokenResult
+  >;
+
+  getUserForAuthentication: OIDCGetUserForAuthenticationFunction<AuthReqBody>;
+
+  generateAuthorizationCode: (
     context: OIDCAuthorizationCodeEndpointContext,
     user: AuthorizationCodeUser,
-  ): Promise<AuthorizationCodeGeneratorResult | undefined>;
+  ) => Promise<AuthorizationCodeGeneratorResult | undefined>;
 
   /**
    * Retrieves the user information associated with the given access token.
@@ -167,9 +168,9 @@ export interface OIDCAuthorizationCodeModel<
    * for the UserInfo endpoint in the OpenID Connect flow.
    * @param accessToken The access token for which to retrieve user information.
    */
-  getUserInfo?(
+  getUserInfo?: (
     accessToken: string,
-  ): Promise<OIDCUserInfo | undefined> | OIDCUserInfo | undefined;
+  ) => Promise<OIDCUserInfo | undefined> | OIDCUserInfo | undefined;
 }
 
 /**
@@ -194,7 +195,7 @@ export class OIDCAuthorizationCodeFlow<
   protected jwksEndpoint: string;
   protected openIdConfiguration?: Record<string, string | string[] | undefined>;
 
-  constructor(options: OIDCAuthorizationCodeFlowOptions) {
+  constructor(options: OIDCAuthorizationCodeFlowOptions<AuthReqBody>) {
     const { discoveryUrl, jwksEndpoint, openIdConfiguration, ...baseOptions } = options;
     super(baseOptions);
     this.discoveryUrl = discoveryUrl;
