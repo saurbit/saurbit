@@ -213,7 +213,7 @@ export class HonoClientCredentialsFlowBuilder<
 > extends ClientCredentialsBuilder {
   protected strategyOptions: HonoStrategyOptionsWithFailedAuth<E> = {};
 
-  constructor(options: Partial<HonoOIDCClientCredentialsFlowOptions<E>>) {
+  constructor(options: Partial<HonoClientCredentialsFlowOptions<E>>) {
     const { strategyOptions, ...flowOptions } = options;
     super({
       ...flowOptions,
@@ -223,7 +223,7 @@ export class HonoClientCredentialsFlowBuilder<
   }
 
   static override create<E extends Env = Env>(
-    options?: Partial<HonoOIDCClientCredentialsFlowOptions<E>>,
+    options?: Partial<HonoClientCredentialsFlowOptions<E>>,
   ) {
     return new HonoClientCredentialsFlowBuilder<E>(options || {});
   }
@@ -259,6 +259,9 @@ export class HonoClientCredentialsFlowBuilder<
     }
     if (this.scopes) {
       flow.setScopes(this.scopes);
+    }
+    if (this.description) {
+      flow.setDescription(this.description);
     }
     for (const clientAuthenticationMethod of this.clientAuthenticationMethods.values()) {
       flow.addClientAuthenticationMethod(clientAuthenticationMethod);

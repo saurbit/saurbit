@@ -5,7 +5,7 @@ import { HTTPException } from "hono/http-exception";
 import { verifyTokenFunction } from "./common.ts";
 import { HonoClientCredentialsFlowBuilder } from "../oauth2_hono_adapter/client_credentials.ts";
 
-export const clientCredentialsFlowBuilt = HonoClientCredentialsFlowBuilder
+export const clientCredentialsFlow = HonoClientCredentialsFlowBuilder
   .create()
   .setSecuritySchemeName("honoClientCredentialsBuilder")
   .setDescription("Client Credentials Grant Flow for Hono API (built with builder)")
@@ -57,7 +57,7 @@ export const clientCredentialsFlowBuilt = HonoClientCredentialsFlowBuilder
     });
   }).build();
 
-export const clientCredentialsFlow = new HonoClientCredentialsFlow({
+export const clientCredentialsFlowInstance = new HonoClientCredentialsFlow({
   model: {
     getClient: async ({
       clientId,
