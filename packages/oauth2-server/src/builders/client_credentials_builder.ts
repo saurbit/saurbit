@@ -8,10 +8,13 @@ import {
   ClientCredentialsGrantContext,
   ClientCredentialsTokenRequest,
 } from "../grants/client_credentials.ts";
-import { OAuth2AccessTokenResult } from "../grants/flow.ts";
+import {
+  OAuth2AccessTokenResult,
+  OAuth2GenerateAccessTokenFunction,
+  OAuth2GetClientFunction,
+} from "../grants/flow.ts";
 import { StrategyVerifyTokenFunction } from "../strategy.ts";
 import { TokenType } from "../token_types/types.ts";
-import { OAuth2Client } from "../types.ts";
 
 export class ClientCredentialsBuilder {
   protected params: ClientCredentialsFlowOptions;
@@ -33,6 +36,10 @@ export class ClientCredentialsBuilder {
       },
       ...params,
     };
+  }
+
+  static create(): ClientCredentialsBuilder {
+    return new ClientCredentialsBuilder({});
   }
 
   getAccessTokenLifetime(): number | undefined {
@@ -85,25 +92,18 @@ export class ClientCredentialsBuilder {
     return this;
   }
 
-  generateAccessToken(
-    handler: (
-      context: ClientCredentialsGrantContext,
-    ) =>
-      | Promise<string | OAuth2AccessTokenResult | undefined>
-      | string
-      | OAuth2AccessTokenResult
-      | undefined,
-  ): this {
-    this.params.model.generateAccessToken = handler;
+  getClient(handler: OAuth2GetClientFunction<ClientCredentialsTokenRequest>): this {
+    this.params.model.getClient = handler;
     return this;
   }
 
-  getClient(
-    handler: (
-      tokenRequest: ClientCredentialsTokenRequest,
-    ) => Promise<OAuth2Client | undefined> | OAuth2Client | undefined,
+  generateAccessToken(
+    handler: OAuth2GenerateAccessTokenFunction<
+      ClientCredentialsGrantContext,
+      OAuth2AccessTokenResult | string
+    >,
   ): this {
-    this.params.model.getClient = handler;
+    this.params.model.generateAccessToken = handler;
     return this;
   }
 
