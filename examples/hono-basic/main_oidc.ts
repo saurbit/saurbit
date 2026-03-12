@@ -46,7 +46,7 @@ app.get(
 );
 
 app.get("/authorize", async (c) => {
-  const result = await oidcAuthorizationCodeFlow.handleAuthorizationEndpointFromHono(c);
+  const result = await oidcAuthorizationCodeFlow.hono().handleAuthorizationEndpoint(c);
   if (result.type === "initiated") {
     return c.html(HtmlFormContent({ usernameField: "username", passwordField: "password" }));
   } else if (result.type === "error") {
@@ -59,7 +59,7 @@ app.get("/authorize", async (c) => {
 app.post("/authorize", async (c) => {
   try {
     // Here you would typically validate the user's credentials and then proceed with the authorization process
-    const result = await oidcAuthorizationCodeFlow.processAuthorizationFromHono(c);
+    const result = await oidcAuthorizationCodeFlow.hono().processAuthorization(c);
 
     if (result.type === "error") {
       // for security reasons, it is recommended to return a generic error message in production instead of the specific error message

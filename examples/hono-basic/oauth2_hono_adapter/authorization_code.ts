@@ -5,8 +5,6 @@ import { HTTPException } from "hono/http-exception";
 import {
   AuthorizationCodeFlow,
   AuthorizationCodeFlowOptions,
-  AuthorizationCodeInitiationResponse,
-  AuthorizationCodeProcessResponse,
   AuthorizationCodeReqBody,
   evaluateStrategy,
   InvalidRequestError,
@@ -19,10 +17,11 @@ import {
 } from "@saurbit/oauth2-server";
 import {
   FailedAuthorizationAction,
+  HonoAdapted,
+  HonoMethods,
   HonoStrategyOptionsWithFailedAuth,
   OAuth2ServerEnv,
 } from "./types.ts";
-import { AuthorizationCodeEndpointResponse } from "@saurbit/oauth2-server";
 import { OIDCAuthorizationCodeFlow } from "@saurbit/oauth2-server";
 import { OIDCAuthorizationCodeProcessResponse } from "@saurbit/oauth2-server";
 import { OIDCAuthorizationCodeEndpointResponse } from "@saurbit/oauth2-server";
@@ -35,6 +34,38 @@ export interface HonoAuthorizationCodeFlowOptions<
 > extends Omit<AuthorizationCodeFlowOptions<AuthReqBody>, "strategyOptions"> {
   strategyOptions: HonoStrategyOptionsWithFailedAuth<E>;
   parseAuthorizationEndpointBody: (context: Context<E & OAuth2ServerEnv>) => Promise<AuthReqBody>;
+}
+
+export interface HonoAuthorizationCodeMethods<E extends Env = Env> extends HonoMethods<E> {
+  /**
+   * This method is a convenience method that combines the logic of initiating (GET) the authorization code flow for Hono.
+   * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
+   * @param context
+   * @returns
+   */
+  initiateAuthorization(
+    context: Context,
+  ): Promise<OIDCAuthorizationCodeInitiationResponse>;
+
+  /**
+   * This method is a convenience method that combines the logic of processing (POST) the authorization code flow for Hono.
+   * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
+   * @param context
+   * @returns
+   */
+  processAuthorization(
+    context: Context,
+  ): Promise<OIDCAuthorizationCodeProcessResponse>;
+
+  /**
+   * This method is a convenience method that handles the authorization endpoint logic for Hono.
+   * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
+   * @param context
+   * @returns
+   */
+  handleAuthorizationEndpoint(
+    context: Context,
+  ): Promise<OIDCAuthorizationCodeEndpointResponse>;
 }
 
 //#endregion
@@ -56,7 +87,7 @@ export interface HonoOIDCAuthorizationCodeFlowOptions<
 export class HonoAuthorizationCodeFlow<
   E extends Env = Env,
   AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
-> extends AuthorizationCodeFlow<AuthReqBody> {
+> extends AuthorizationCodeFlow<AuthReqBody> implements HonoAdapted<E> {
   readonly #verifyTokenHandler: (
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<StrategyResult>;
@@ -67,6 +98,81 @@ export class HonoAuthorizationCodeFlow<
   readonly #parseAuthorizationEndpointBody: (
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<AuthReqBody>;
+
+  readonly #hono: HonoAuthorizationCodeMethods<E> = {
+    authorizeMiddleware: (scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> => {
+      return scopes?.length ? this.#createAuthorizeMiddleware(scopes) : this.#authorizeMiddleware;
+    },
+    token: async (context: Context): Promise<OAuth2FlowTokenResponse> => {
+      return await this.token(context.req.raw);
+    },
+
+    verifyToken: async (context: Context<E & OAuth2ServerEnv>): Promise<StrategyResult> => {
+      return await this.#verifyTokenHandler(context);
+    },
+
+    initiateAuthorization: async (
+      context: Context,
+    ): Promise<OIDCAuthorizationCodeInitiationResponse> => {
+      return await this.initiateAuthorization(context.req.raw);
+    },
+
+    processAuthorization: async (
+      context: Context,
+    ): Promise<OIDCAuthorizationCodeProcessResponse> => {
+      return await this.processAuthorization(
+        context.req.raw.clone(),
+        await this.#parseAuthorizationEndpointBody(context),
+      );
+    },
+
+    handleAuthorizationEndpoint: async (
+      context: Context,
+    ): Promise<OIDCAuthorizationCodeEndpointResponse> => {
+      if (context.req.method === "GET") {
+        // In a real implementation, you would render a login page
+        // or consent page here for the user
+        // to authenticate and authorize the client.
+        const result = await this.hono().initiateAuthorization(context);
+
+        if (!result.success) {
+          return {
+            type: "error",
+            ...result,
+          };
+        }
+
+        return {
+          ...result,
+          type: "initiated",
+          method: "GET",
+        };
+      }
+
+      if (context.req.method === "POST") {
+        // In a real implementation, you would authenticate the user here,
+        // and if authentication is successful, generate an authorization code,
+        // and redirect the user to the redirect_uri with the code and state as query parameters.
+
+        const result = await this.hono().processAuthorization(context);
+
+        if (result.type === "error") {
+          return result;
+        }
+
+        return {
+          ...result,
+          method: "POST",
+        };
+      }
+
+      return {
+        type: "error",
+        error: new InvalidRequestError("Unsupported HTTP method"),
+        redirectable: false,
+      };
+    },
+  };
 
   constructor(options: HonoAuthorizationCodeFlowOptions<AuthReqBody, E>) {
     const { strategyOptions, ...flowOptions } = options;
@@ -104,7 +210,7 @@ export class HonoAuthorizationCodeFlow<
 
   #createAuthorizeMiddleware(scopes: string[]): MiddlewareHandler<E & OAuth2ServerEnv> {
     return async (c, next) => {
-      const result = await this.verifyTokenFromHono(c);
+      const result = await this.hono().verifyToken(c);
 
       if (result.success) {
         if (
@@ -124,103 +230,15 @@ export class HonoAuthorizationCodeFlow<
     };
   }
 
-  async verifyTokenFromHono(
-    context: Context<E & OAuth2ServerEnv>,
-  ): Promise<StrategyResult> {
-    return await this.#verifyTokenHandler(context);
-  }
-
-  async tokenFromHono(context: Context): Promise<OAuth2FlowTokenResponse> {
-    return await this.token(context.req.raw);
-  }
-
-  authorizeMiddleware(scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> {
-    return scopes?.length ? this.#createAuthorizeMiddleware(scopes) : this.#authorizeMiddleware;
-  }
-
-  /**
-   * This method is a convenience method that combines the logic of initiating (GET) the authorization code flow for Hono.
-   * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
-   * @param context
-   * @returns
-   */
-  async initiateAuthorizationFromHono(
-    context: Context,
-  ): Promise<AuthorizationCodeInitiationResponse> {
-    return await this.initiateAuthorization(context.req.raw);
-  }
-
-  /**
-   * This method is a convenience method that combines the logic of processing (POST) the authorization code flow for Hono.
-   * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
-   * @param context
-   * @returns
-   */
-  async processAuthorizationFromHono(context: Context): Promise<AuthorizationCodeProcessResponse> {
-    return await this.processAuthorization(
-      context.req.raw.clone(),
-      await this.#parseAuthorizationEndpointBody(context),
-    );
-  }
-
-  /**
-   * This method is a convenience method that handles the authorization endpoint logic for Hono.
-   * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
-   * @param context
-   * @returns
-   */
-  async handleAuthorizationEndpointFromHono(
-    context: Context,
-  ): Promise<AuthorizationCodeEndpointResponse> {
-    if (context.req.method === "GET") {
-      // In a real implementation, you would render a login page
-      // or consent page here for the user
-      // to authenticate and authorize the client.
-      const result = await this.initiateAuthorizationFromHono(context);
-
-      if (!result.success) {
-        return {
-          type: "error",
-          ...result,
-        };
-      }
-
-      return {
-        ...result,
-        type: "initiated",
-        method: "GET",
-      };
-    }
-
-    if (context.req.method === "POST") {
-      // In a real implementation, you would authenticate the user here,
-      // and if authentication is successful, generate an authorization code,
-      // and redirect the user to the redirect_uri with the code and state as query parameters.
-
-      const result = await this.processAuthorizationFromHono(context);
-
-      if (result.type === "error") {
-        return result;
-      }
-
-      return {
-        ...result,
-        method: "POST",
-      };
-    }
-
-    return {
-      type: "error",
-      error: new InvalidRequestError("Unsupported HTTP method"),
-      redirectable: false,
-    };
+  hono(): Readonly<HonoAuthorizationCodeMethods<E>> {
+    return Object.freeze(this.#hono);
   }
 }
 
 export class HonoOIDCAuthorizationCodeFlow<
   E extends Env = Env,
   AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
-> extends OIDCAuthorizationCodeFlow<AuthReqBody> {
+> extends OIDCAuthorizationCodeFlow<AuthReqBody> implements HonoAdapted<E> {
   readonly #verifyTokenHandler: (
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<StrategyResult>;
@@ -231,6 +249,81 @@ export class HonoOIDCAuthorizationCodeFlow<
   readonly #parseAuthorizationEndpointBody: (
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<AuthReqBody>;
+
+  readonly #hono: HonoAuthorizationCodeMethods<E> = {
+    authorizeMiddleware: (scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> => {
+      return scopes?.length ? this.#createAuthorizeMiddleware(scopes) : this.#authorizeMiddleware;
+    },
+    token: async (context: Context): Promise<OAuth2FlowTokenResponse> => {
+      return await this.token(context.req.raw);
+    },
+
+    verifyToken: async (context: Context<E & OAuth2ServerEnv>): Promise<StrategyResult> => {
+      return await this.#verifyTokenHandler(context);
+    },
+
+    initiateAuthorization: async (
+      context: Context,
+    ): Promise<OIDCAuthorizationCodeInitiationResponse> => {
+      return await this.initiateAuthorization(context.req.raw);
+    },
+
+    processAuthorization: async (
+      context: Context,
+    ): Promise<OIDCAuthorizationCodeProcessResponse> => {
+      return await this.processAuthorization(
+        context.req.raw.clone(),
+        await this.#parseAuthorizationEndpointBody(context),
+      );
+    },
+
+    handleAuthorizationEndpoint: async (
+      context: Context,
+    ): Promise<OIDCAuthorizationCodeEndpointResponse> => {
+      if (context.req.method === "GET") {
+        // In a real implementation, you would render a login page
+        // or consent page here for the user
+        // to authenticate and authorize the client.
+        const result = await this.hono().initiateAuthorization(context);
+
+        if (!result.success) {
+          return {
+            type: "error",
+            ...result,
+          };
+        }
+
+        return {
+          ...result,
+          type: "initiated",
+          method: "GET",
+        };
+      }
+
+      if (context.req.method === "POST") {
+        // In a real implementation, you would authenticate the user here,
+        // and if authentication is successful, generate an authorization code,
+        // and redirect the user to the redirect_uri with the code and state as query parameters.
+
+        const result = await this.hono().processAuthorization(context);
+
+        if (result.type === "error") {
+          return result;
+        }
+
+        return {
+          ...result,
+          method: "POST",
+        };
+      }
+
+      return {
+        type: "error",
+        error: new InvalidRequestError("Unsupported HTTP method"),
+        redirectable: false,
+      };
+    },
+  };
 
   constructor(options: HonoOIDCAuthorizationCodeFlowOptions<AuthReqBody, E>) {
     const { strategyOptions, ...flowOptions } = options;
@@ -268,7 +361,7 @@ export class HonoOIDCAuthorizationCodeFlow<
 
   #createAuthorizeMiddleware(scopes: string[]): MiddlewareHandler<E & OAuth2ServerEnv> {
     return async (c, next) => {
-      const result = await this.verifyTokenFromHono(c);
+      const result = await this.hono().verifyToken(c);
 
       if (result.success) {
         if (
@@ -288,98 +381,8 @@ export class HonoOIDCAuthorizationCodeFlow<
     };
   }
 
-  async verifyTokenFromHono(
-    context: Context<E & OAuth2ServerEnv>,
-  ): Promise<StrategyResult> {
-    return await this.#verifyTokenHandler(context);
-  }
-
-  async tokenFromHono(context: Context): Promise<OAuth2FlowTokenResponse> {
-    return await this.token(context.req.raw);
-  }
-
-  authorizeMiddleware(scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> {
-    return scopes?.length ? this.#createAuthorizeMiddleware(scopes) : this.#authorizeMiddleware;
-  }
-
-  /**
-   * This method is a convenience method that combines the logic of initiating (GET) the authorization code flow for Hono.
-   * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
-   * @param context
-   * @returns
-   */
-  async initiateAuthorizationFromHono(
-    context: Context,
-  ): Promise<OIDCAuthorizationCodeInitiationResponse> {
-    return await this.initiateAuthorization(context.req.raw);
-  }
-
-  /**
-   * This method is a convenience method that combines the logic of processing (POST) the authorization code flow for Hono.
-   * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
-   * @param context
-   * @returns
-   */
-  async processAuthorizationFromHono(
-    context: Context,
-  ): Promise<OIDCAuthorizationCodeProcessResponse> {
-    return await this.processAuthorization(
-      context.req.raw.clone(),
-      await this.#parseAuthorizationEndpointBody(context),
-    );
-  }
-
-  /**
-   * This method is a convenience method that handles the authorization endpoint logic for Hono.
-   * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
-   * @param context
-   * @returns
-   */
-  async handleAuthorizationEndpointFromHono(
-    context: Context,
-  ): Promise<OIDCAuthorizationCodeEndpointResponse> {
-    if (context.req.method === "GET") {
-      // In a real implementation, you would render a login page
-      // or consent page here for the user
-      // to authenticate and authorize the client.
-      const result = await this.initiateAuthorizationFromHono(context);
-
-      if (!result.success) {
-        return {
-          type: "error",
-          ...result,
-        };
-      }
-
-      return {
-        ...result,
-        type: "initiated",
-        method: "GET",
-      };
-    }
-
-    if (context.req.method === "POST") {
-      // In a real implementation, you would authenticate the user here,
-      // and if authentication is successful, generate an authorization code,
-      // and redirect the user to the redirect_uri with the code and state as query parameters.
-
-      const result = await this.processAuthorizationFromHono(context);
-
-      if (result.type === "error") {
-        return result;
-      }
-
-      return {
-        ...result,
-        method: "POST",
-      };
-    }
-
-    return {
-      type: "error",
-      error: new InvalidRequestError("Unsupported HTTP method"),
-      redirectable: false,
-    };
+  hono(): Readonly<HonoAuthorizationCodeMethods<E>> {
+    return Object.freeze(this.#hono);
   }
 }
 

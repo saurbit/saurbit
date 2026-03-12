@@ -9,21 +9,13 @@ import {
   StrategyResult,
 } from "@saurbit/oauth2-server";
 import type { Context, Env, MiddlewareHandler } from "hono";
-import { OAuth2ServerEnv } from "./types.ts";
+import { HonoMethods, OAuth2ServerEnv } from "./types.ts";
 import { HTTPException } from "hono/http-exception";
 
 export interface HonoOIDCFlow<
   E extends Env = Env,
 > extends OIDCFlow {
-  authorizeMiddleware(scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv>;
-  tokenFromHono(context: Context): Promise<OAuth2FlowTokenResponse>;
-  verifyTokenFromHono(context: Context<E & OAuth2ServerEnv>): Promise<StrategyResult>;
-}
-
-export interface HonoMethods<E extends Env = Env> {
-  authorizeMiddleware(scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv>;
-  token(context: Context): Promise<OAuth2FlowTokenResponse>;
-  verifyToken(context: Context<E & OAuth2ServerEnv>): Promise<StrategyResult>;
+  hono(): HonoMethods<E>;
 }
 
 export class HonoOIDCMultipleFlows<
@@ -31,7 +23,7 @@ export class HonoOIDCMultipleFlows<
 > extends OIDCMultipleFlows<HonoOIDCFlow<E>> {
   readonly #hono: HonoMethods<E> = {
     authorizeMiddleware: (scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> => {
-      const middlewares = this.flows.map((flow) => flow.authorizeMiddleware(scopes));
+      const middlewares = this.flows.map((flow) => flow.hono().authorizeMiddleware(scopes));
       return async (context, next) => {
         for (const [i, middleware] of middlewares.entries()) {
           try {
@@ -51,7 +43,7 @@ export class HonoOIDCMultipleFlows<
     token: async (context: Context): Promise<OAuth2FlowTokenResponse> => {
       const errors: OAuth2Error[] = [];
       for (const flow of this.flows) {
-        const result = await flow.tokenFromHono(context);
+        const result = await flow.hono().token(context);
         if (result.success) {
           return result;
         }
@@ -65,7 +57,7 @@ export class HonoOIDCMultipleFlows<
     verifyToken: async (context: Context<E & OAuth2ServerEnv>): Promise<StrategyResult> => {
       const errors: StrategyError[] = [];
       for (const flow of this.flows) {
-        const validation = await flow.verifyTokenFromHono(context);
+        const validation = await flow.hono().verifyToken(context);
         if (validation.success) {
           return validation;
         }

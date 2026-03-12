@@ -44,7 +44,7 @@ app.get(
 );
 
 app.get("/authorize", async (c) => {
-  const result = await authorizationCodeFlow.handleAuthorizationEndpointFromHono(c);
+  const result = await authorizationCodeFlow.hono().handleAuthorizationEndpoint(c);
   if (result.type === "initiated") {
     return c.html(HtmlFormContent({ usernameField: "username", passwordField: "password" }));
   } else if (result.type === "error") {
@@ -57,7 +57,7 @@ app.get("/authorize", async (c) => {
 app.post("/authorize", async (c) => {
   try {
     // Here you would typically validate the user's credentials and then proceed with the authorization process
-    const result = await authorizationCodeFlow.processAuthorizationFromHono(c);
+    const result = await authorizationCodeFlow.hono().processAuthorization(c);
 
     if (result.type === "error") {
       // for security reasons, it is recommended to return a generic error message in production instead of the specific error message
@@ -199,7 +199,7 @@ app.post(
   async (c) => {
     console.log("Token endpoint called with body");
     //const result = await clientCredentialsFlow.tokenFromHono(c);
-    const result = await authorizationCodeFlow.tokenFromHono(c);
+    const result = await authorizationCodeFlow.hono().token(c);
     if (result.success) {
       return c.json(result.tokenResponse);
     } else {
