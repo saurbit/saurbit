@@ -199,7 +199,7 @@ app.post(
   "/token",
   async (c) => {
     console.log("Token endpoint called with body");
-    //const result = await clientCredentialsFlow.tokenFromHono(c);
+    //const result = await clientCredentialsFlow.hono()token(c);
     const result = await oidcMultipleFlows.hono().token(c);
     if (result.success) {
       return c.json(result.tokenResponse);

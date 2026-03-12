@@ -12,6 +12,8 @@ import {
 } from "@saurbit/oauth2-server";
 import {
   FailedAuthorizationAction,
+  HonoAdapted,
+  HonoMethods,
   HonoStrategyOptionsWithFailedAuth,
   OAuth2ServerEnv,
 } from "./types.ts";
@@ -39,13 +41,26 @@ export interface HonoOIDCClientCredentialsFlowOptions<E extends Env = Env>
 
 export class HonoClientCredentialsFlow<
   E extends Env = Env,
-> extends ClientCredentialsFlow {
+> extends ClientCredentialsFlow implements HonoAdapted<E> {
   readonly #verifyTokenHandler: (
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<StrategyResult>;
   readonly #authorizeMiddleware: MiddlewareHandler<E & OAuth2ServerEnv>;
 
   readonly #failedAuthorizationAction: FailedAuthorizationAction<E>;
+
+  readonly #hono: HonoMethods<E> = {
+    authorizeMiddleware: (scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> => {
+      return scopes?.length ? this.#createAuthorizeMiddleware(scopes) : this.#authorizeMiddleware;
+    },
+    token: async (context: Context): Promise<OAuth2FlowTokenResponse> => {
+      return await this.token(context.req.raw);
+    },
+
+    verifyToken: async (context: Context<E & OAuth2ServerEnv>): Promise<StrategyResult> => {
+      return await this.#verifyTokenHandler(context);
+    },
+  };
 
   constructor(options: HonoClientCredentialsFlowOptions<E>) {
     const { strategyOptions, ...flowOptions } = options;
@@ -81,7 +96,7 @@ export class HonoClientCredentialsFlow<
 
   #createAuthorizeMiddleware(scopes: string[]): MiddlewareHandler<E & OAuth2ServerEnv> {
     return async (c, next) => {
-      const result = await this.verifyTokenFromHono(c);
+      const result = await this.hono().verifyToken(c);
 
       if (result.success) {
         if (
@@ -101,30 +116,33 @@ export class HonoClientCredentialsFlow<
     };
   }
 
-  async verifyTokenFromHono(
-    context: Context<E & OAuth2ServerEnv>,
-  ): Promise<StrategyResult> {
-    return await this.#verifyTokenHandler(context);
-  }
-
-  async tokenFromHono(context: Context): Promise<OAuth2FlowTokenResponse> {
-    return await this.token(context.req.raw);
-  }
-
-  authorizeMiddleware(scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> {
-    return scopes?.length ? this.#createAuthorizeMiddleware(scopes) : this.#authorizeMiddleware;
+  hono(): Readonly<HonoMethods<E>> {
+    return Object.freeze(this.#hono);
   }
 }
 
 export class HonoOIDCClientCredentialsFlow<
   E extends Env = Env,
-> extends OIDCClientCredentialsFlow {
+> extends OIDCClientCredentialsFlow implements HonoAdapted<E> {
   readonly #verifyTokenHandler: (
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<StrategyResult>;
   readonly #authorizeMiddleware: MiddlewareHandler<E & OAuth2ServerEnv>;
 
   readonly #failedAuthorizationAction: FailedAuthorizationAction<E>;
+
+  readonly #hono: HonoMethods<E> = {
+    authorizeMiddleware: (scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> => {
+      return scopes?.length ? this.#createAuthorizeMiddleware(scopes) : this.#authorizeMiddleware;
+    },
+    token: async (context: Context): Promise<OAuth2FlowTokenResponse> => {
+      return await this.token(context.req.raw);
+    },
+
+    verifyToken: async (context: Context<E & OAuth2ServerEnv>): Promise<StrategyResult> => {
+      return await this.#verifyTokenHandler(context);
+    },
+  };
 
   constructor(options: HonoOIDCClientCredentialsFlowOptions<E>) {
     const { strategyOptions, ...flowOptions } = options;
@@ -160,7 +178,7 @@ export class HonoOIDCClientCredentialsFlow<
 
   #createAuthorizeMiddleware(scopes: string[]): MiddlewareHandler<E & OAuth2ServerEnv> {
     return async (c, next) => {
-      const result = await this.verifyTokenFromHono(c);
+      const result = await this.hono().verifyToken(c);
 
       if (result.success) {
         if (
@@ -180,18 +198,8 @@ export class HonoOIDCClientCredentialsFlow<
     };
   }
 
-  async verifyTokenFromHono(
-    context: Context<E & OAuth2ServerEnv>,
-  ): Promise<StrategyResult> {
-    return await this.#verifyTokenHandler(context);
-  }
-
-  async tokenFromHono(context: Context): Promise<OAuth2FlowTokenResponse> {
-    return await this.token(context.req.raw);
-  }
-
-  authorizeMiddleware(scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> {
-    return scopes?.length ? this.#createAuthorizeMiddleware(scopes) : this.#authorizeMiddleware;
+  hono(): Readonly<HonoMethods<E>> {
+    return Object.freeze(this.#hono);
   }
 }
 

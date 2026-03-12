@@ -163,7 +163,7 @@ const responseSchema = type({
 app.post(
   "/author",
   // Apply the authentication middleware to this route
-  clientCredentialsFlow.authorizeMiddleware(["content:read", "content:write"]),
+  clientCredentialsFlow.hono().authorizeMiddleware(["content:read", "content:write"]),
   // Add OpenAPI documentation for this route, including the security requirements and response schema
   describeRoute({
     security: [
@@ -198,7 +198,7 @@ app.post(
   "/token",
   async (c) => {
     console.log("Token endpoint called with body");
-    //const result = await clientCredentialsFlow.tokenFromHono(c);
+    //const result = await clientCredentialsFlow.hono().token(c);
     const result = await authorizationCodeFlow.hono().token(c);
     if (result.success) {
       return c.json(result.tokenResponse);
