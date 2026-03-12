@@ -56,6 +56,9 @@ export type {
   OAuth2AccessTokenResult,
   OAuth2FlowOptions,
   OAuth2FlowTokenResponse,
+  OAuth2GenerateAccessTokenFromRefreshTokenFunction,
+  OAuth2GenerateAccessTokenFunction,
+  OAuth2GetClientFunction,
   OAuth2GrantModel,
   OAuth2RefreshTokenGrantContext,
   OAuth2RefreshTokenRequest,
@@ -70,7 +73,6 @@ export type {
   AuthorizationCodeEndpointRequest,
   AuthorizationCodeEndpointResponse,
   AuthorizationCodeFlowOptions,
-  AuthorizationCodeGeneratorResult,
   AuthorizationCodeGrant,
   AuthorizationCodeGrantContext,
   AuthorizationCodeInitiationResponse,
@@ -79,6 +81,10 @@ export type {
   AuthorizationCodeReqBody,
   AuthorizationCodeTokenRequest,
   AuthorizationCodeUser,
+  GenerateAuthorizationCodeFunction,
+  GenerateAuthorizationCodeResult,
+  GetUserForAuthenticationFunction,
+  GetUserForAuthenticationResult,
 } from "./grants/authorization_code.ts";
 export { AuthorizationCodeFlow } from "./grants/authorization_code.ts";
 export type {

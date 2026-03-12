@@ -12,13 +12,13 @@ import {
   AuthorizationCodeEndpointRequest,
   AuthorizationCodeEndpointResponse,
   AuthorizationCodeFlowOptions,
-  AuthorizationCodeGeneratorResult,
   AuthorizationCodeGrantContext,
   AuthorizationCodeInitiationResponse,
   AuthorizationCodeModel,
   AuthorizationCodeProcessResponse,
   AuthorizationCodeReqBody,
-  AuthorizationCodeUser,
+  GenerateAuthorizationCodeFunction,
+  GetUserForAuthenticationFunction,
 } from "../grants/authorization_code.ts";
 import { normalizeUrl } from "../utils/normalize_url.ts";
 import { OIDCFlow, OIDCFlowExtendedOptions, OIDCUserInfo } from "./types.ts";
@@ -129,18 +129,6 @@ export interface OIDCAuthorizationCodeAccessTokenResult extends AuthorizationCod
   idToken: string;
 }
 
-export interface OIDCGetUserForAuthenticationFunction<AuthReqBody> {
-  (
-    context: OIDCAuthorizationCodeEndpointContext,
-    reqBody: AuthReqBody,
-    request: Request,
-  ): Promise<
-    | { type: "authenticated"; user: AuthorizationCodeUser }
-    | { type: "unauthenticated"; message?: string }
-    | undefined
-  >;
-}
-
 export interface OIDCAuthorizationCodeModel<
   AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
 > extends AuthorizationCodeModel<AuthReqBody> {
@@ -155,12 +143,14 @@ export interface OIDCAuthorizationCodeModel<
     AuthorizationCodeAccessTokenResult
   >;
 
-  getUserForAuthentication: OIDCGetUserForAuthenticationFunction<AuthReqBody>;
+  getUserForAuthentication: GetUserForAuthenticationFunction<
+    OIDCAuthorizationCodeEndpointContext,
+    AuthReqBody
+  >;
 
-  generateAuthorizationCode: (
-    context: OIDCAuthorizationCodeEndpointContext,
-    user: AuthorizationCodeUser,
-  ) => Promise<AuthorizationCodeGeneratorResult | undefined>;
+  generateAuthorizationCode: GenerateAuthorizationCodeFunction<
+    OIDCAuthorizationCodeEndpointContext
+  >;
 
   /**
    * Retrieves the user information associated with the given access token.

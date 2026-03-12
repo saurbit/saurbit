@@ -206,10 +206,43 @@ export interface AuthorizationCodeAccessTokenResult extends OAuth2AccessTokenRes
   idToken?: string;
 }
 
-export type AuthorizationCodeGeneratorResult =
+export type GetUserForAuthenticationResult =
+  | { type: "authenticated"; user: AuthorizationCodeUser }
+  | { type: "unauthenticated"; message?: string };
+
+export interface GetUserForAuthenticationFunction<
+  TContext extends AuthorizationCodeEndpointContext = AuthorizationCodeEndpointContext,
+  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
+> {
+  (
+    context: TContext,
+    reqBody: AuthReqBody,
+    request: Request,
+  ):
+    | Promise<
+      | GetUserForAuthenticationResult
+      | undefined
+    >
+    | GetUserForAuthenticationResult
+    | undefined;
+}
+
+export type GenerateAuthorizationCodeResult =
   | { type: "code"; code: string }
   | { type: "continue"; message?: string }
   | { type: "deny"; message?: string };
+
+export interface GenerateAuthorizationCodeFunction<
+  TContext extends AuthorizationCodeEndpointContext = AuthorizationCodeEndpointContext,
+> {
+  (
+    context: TContext,
+    user: AuthorizationCodeUser,
+  ):
+    | Promise<GenerateAuthorizationCodeResult | undefined>
+    | GenerateAuthorizationCodeResult
+    | undefined;
+}
 
 /**
  * Model interface that must be implemented by the consuming application
@@ -242,20 +275,12 @@ export interface AuthorizationCodeModel<
 
   getClientForAuthentication: OAuth2GetClientFunction<AuthorizationCodeEndpointRequest>;
 
-  getUserForAuthentication: (
-    context: AuthorizationCodeEndpointContext,
-    reqBody: AuthReqBody,
-    request: Request,
-  ) => Promise<
-    | { type: "authenticated"; user: AuthorizationCodeUser }
-    | { type: "unauthenticated"; message?: string }
-    | undefined
+  getUserForAuthentication: GetUserForAuthenticationFunction<
+    AuthorizationCodeEndpointContext,
+    AuthReqBody
   >;
 
-  generateAuthorizationCode: (
-    context: AuthorizationCodeEndpointContext,
-    user: AuthorizationCodeUser,
-  ) => Promise<AuthorizationCodeGeneratorResult | undefined>;
+  generateAuthorizationCode: GenerateAuthorizationCodeFunction<AuthorizationCodeEndpointContext>;
 }
 
 /**
