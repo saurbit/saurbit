@@ -256,8 +256,8 @@ authorizationCodeFlow
     "content:write": "Write content",
     admin: "Admin access",
   })
-  .setTokenUrl("/token") // Set the token URL for the OpenAPI documentation
-  .setAuthorizationUrl("/authorize"); // Set the authorization URL for the OpenAPI documentation
+  .setTokenEndpoint("/token") // Set the token URL for the OpenAPI documentation
+  .setAuthorizationEndpoint("/authorize"); // Set the authorization URL for the OpenAPI documentation
 
 export const HtmlFormContent = (props: {
   errorMessage?: string;

@@ -71,7 +71,7 @@ export class OIDCClientCredentialsFlow extends AbstractClientCredentialsFlow imp
       jwksEndpoint = this.normalizeUrl(jwksEndpoint, host);
     }
     // Format token endpoint if it's a relative path
-    let tokenEndpoint = this.getTokenUrl();
+    let tokenEndpoint = this.getTokenEndpoint();
     if (tokenEndpoint) {
       tokenEndpoint = this.normalizeUrl(tokenEndpoint, host);
     }

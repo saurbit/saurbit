@@ -290,7 +290,7 @@ export interface AuthorizationCodeFlowOptions<
   AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
 > extends OAuth2FlowOptions {
   model: AuthorizationCodeModel<AuthReqBody>;
-  authorizationUrl?: string;
+  authorizationEndpoint?: string;
 }
 
 export abstract class AbstractAuthorizationCodeFlow<
@@ -299,24 +299,24 @@ export abstract class AbstractAuthorizationCodeFlow<
   readonly grantType = "authorization_code" as const;
   protected readonly model: AuthorizationCodeModel<AuthReqBody>;
 
-  protected authorizationUrl: string = "/authorize";
+  protected authorizationEndpoint: string = "/authorize";
 
   constructor(options: AuthorizationCodeFlowOptions<AuthReqBody>) {
-    const { model, authorizationUrl, ...flowOptions } = { ...options };
+    const { model, authorizationEndpoint, ...flowOptions } = { ...options };
     super(flowOptions);
     this.model = model;
-    if (authorizationUrl) {
-      this.authorizationUrl = authorizationUrl;
+    if (authorizationEndpoint) {
+      this.authorizationEndpoint = authorizationEndpoint;
     }
   }
 
-  setAuthorizationUrl(url: string): this {
-    this.authorizationUrl = url;
+  setAuthorizationEndpoint(url: string): this {
+    this.authorizationEndpoint = url;
     return this;
   }
 
-  getAuthorizationUrl(): string {
-    return this.authorizationUrl;
+  getAuthorizationEndpoint(): string {
+    return this.authorizationEndpoint;
   }
 
   protected async getAuthorizationCodeEndpointContext(
@@ -859,9 +859,9 @@ export class AuthorizationCodeFlow<
         description: this.getDescription(),
         flows: {
           authorizationCode: {
-            authorizationUrl: this.getAuthorizationUrl(),
+            authorizationUrl: this.getAuthorizationEndpoint(),
             scopes: { ...(this.getScopes() || {}) },
-            tokenUrl: this.getTokenUrl(),
+            tokenUrl: this.getTokenEndpoint(),
           },
         },
       },

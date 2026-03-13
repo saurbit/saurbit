@@ -31,7 +31,7 @@ export interface OAuth2FlowOptions {
   strategyOptions: Omit<StrategyOptions, "tokenType">;
   securitySchemeName?: string;
   accessTokenLifetime?: number;
-  tokenUrl?: string;
+  tokenEndpoint?: string;
 }
 
 export interface OAuth2AccessTokenResult {
@@ -144,7 +144,7 @@ export abstract class OAuth2Flow {
   protected securitySchemeName: string = "oauth2-auth-flow";
   /** Default lifetime (in seconds) for access tokens. @default {3600} */
   protected accessTokenLifetime: number = 3600;
-  protected tokenUrl: string = "/token";
+  protected tokenEndpoint: string = "/token";
   protected description?: string;
   protected scopes?: Record<string, string>;
 
@@ -173,8 +173,8 @@ export abstract class OAuth2Flow {
     if (options?.securitySchemeName) {
       this.securitySchemeName = options?.securitySchemeName;
     }
-    if (options?.tokenUrl) {
-      this.tokenUrl = options?.tokenUrl;
+    if (options?.tokenEndpoint) {
+      this.tokenEndpoint = options?.tokenEndpoint;
     }
     if (options?.strategyOptions) {
       this.strategyOptions = options.strategyOptions;
@@ -386,15 +386,13 @@ export abstract class OAuth2Flow {
     return this;
   }
 
-  setTokenUrl(tokenUrl: string): this {
-    // This method is a no-op since the token URL is determined by the route where the token method is called.
-    // It's included here for better discoverability and to allow setting the token URL in a fluent style when configuring the grant flow.
-    this.tokenUrl = tokenUrl;
+  setTokenEndpoint(tokenEndpoint: string): this {
+    this.tokenEndpoint = tokenEndpoint;
     return this;
   }
 
-  getTokenUrl(): string {
-    return this.tokenUrl;
+  getTokenEndpoint(): string {
+    return this.tokenEndpoint;
   }
 
   getScopes(): Record<string, string> | undefined {

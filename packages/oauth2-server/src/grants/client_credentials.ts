@@ -230,7 +230,7 @@ export class ClientCredentialsFlow extends AbstractClientCredentialsFlow {
         flows: {
           clientCredentials: {
             scopes: { ...(this.getScopes() || {}) },
-            tokenUrl: this.getTokenUrl(),
+            tokenUrl: this.getTokenEndpoint(),
           },
         },
       },

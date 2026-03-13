@@ -14,7 +14,7 @@ export const clientCredentialsFlow = HonoClientCredentialsFlowBuilder
     "content:write": "Write content",
     "admin": "Admin access",
   })
-  .setTokenUrl("/token")
+  .setTokenEndpoint("/token")
   .setAccessTokenLifetime(3600)
   .clientSecretBasicAuthenticationMethod()
   .clientSecretPostAuthenticationMethod()
@@ -132,4 +132,4 @@ clientCredentialsFlow
     "content:write": "Write content",
     "admin": "Admin access",
   })
-  .setTokenUrl("/token"); // Set the token URL for the OpenAPI documentation
+  .setTokenEndpoint("/token"); // Set the token URL for the OpenAPI documentation

@@ -3,8 +3,6 @@ import { ClientSecretPost } from "../client_auth_methods/client_secret_post.ts";
 import { NoneAuthMethod } from "../client_auth_methods/none.ts";
 import { ClientAuthMethod } from "../client_auth_methods/types.ts";
 import {
-  ClientCredentialsFlow,
-  ClientCredentialsFlowOptions,
   ClientCredentialsGrantContext,
   ClientCredentialsTokenRequest,
 } from "../grants/client_credentials.ts";
@@ -13,17 +11,21 @@ import {
   OAuth2GenerateAccessTokenFunction,
   OAuth2GetClientFunction,
 } from "../grants/flow.ts";
+import {
+  OIDCClientCredentialsFlow,
+  OIDCClientCredentialsFlowOptions,
+} from "../oidc/oidc_client_credentials.ts";
 import { StrategyVerifyTokenFunction } from "../strategy.ts";
 import { TokenType } from "../token_types/types.ts";
 
-export class ClientCredentialsBuilder {
-  protected params: ClientCredentialsFlowOptions;
+export class OIDCClientCredentialsBuilder {
+  protected params: OIDCClientCredentialsFlowOptions;
   protected description?: string | undefined;
   protected scopes: Record<string, string> = {};
   protected tokenType?: TokenType | undefined;
   protected clientAuthenticationMethods: Map<string, ClientAuthMethod> = new Map();
 
-  constructor(params: Partial<ClientCredentialsFlowOptions>) {
+  constructor(params: Partial<OIDCClientCredentialsFlowOptions>) {
     this.params = {
       strategyOptions: params.strategyOptions || {},
       model: params.model || {
@@ -34,12 +36,13 @@ export class ClientCredentialsBuilder {
           return undefined;
         },
       },
+      discoveryUrl: params.discoveryUrl || "/.well-known/openid-configuration",
       ...params,
     };
   }
 
-  static create(): ClientCredentialsBuilder {
-    return new ClientCredentialsBuilder({});
+  static create(): OIDCClientCredentialsBuilder {
+    return new OIDCClientCredentialsBuilder({});
   }
 
   getAccessTokenLifetime(): number | undefined {
@@ -149,8 +152,8 @@ export class ClientCredentialsBuilder {
     return this;
   }
 
-  build(): ClientCredentialsFlow {
-    const result = new ClientCredentialsFlow(this.params);
+  build(): OIDCClientCredentialsFlow {
+    const result = new OIDCClientCredentialsFlow(this.params);
     if (this.tokenType) {
       result.setTokenType(this.tokenType);
     }
