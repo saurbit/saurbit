@@ -19,6 +19,7 @@ import {
   OAuth2ServerEnv,
 } from "./types.ts";
 import { OIDCClientCredentialsFlow } from "@saurbit/oauth2-server";
+import { OIDCClientCredentialsBuilder } from "@saurbit/oauth2-server";
 
 //#region Types and Interfaces
 
@@ -255,6 +256,56 @@ export class HonoClientCredentialsFlowBuilder<
       strategyOptions: this.strategyOptions,
     };
     return new HonoClientCredentialsFlow<E>(params);
+  }
+}
+
+export class HonoOIDCClientCredentialsFlowBuilder<
+  E extends Env = Env,
+> extends OIDCClientCredentialsBuilder {
+  protected strategyOptions: HonoOAuth2StrategyOptions<E> = {};
+
+  constructor(options: Partial<HonoOIDCClientCredentialsFlowOptions<E>>) {
+    const { strategyOptions, ...flowOptions } = options;
+    super({
+      ...flowOptions,
+      strategyOptions: {},
+    });
+    this.strategyOptions = strategyOptions || {};
+  }
+
+  static override create<E extends Env = Env>(
+    options?: Partial<HonoOIDCClientCredentialsFlowOptions<E>>,
+  ) {
+    return new HonoOIDCClientCredentialsFlowBuilder<E>(options || {});
+  }
+
+  failedAuthorizationAction(action: FailedAuthorizationAction<E>): this {
+    this.strategyOptions.failedAuthorizationAction = action;
+    return this;
+  }
+
+  /**
+   * This method is overridden to prevent setting a verifyToken handler that does not have access to the Hono context.
+   * Use `verifyTokenHandler` instead to set a handler that receives the Hono context.
+   * @deprecated Use `verifyTokenHandler` instead to set a handler that receives the Hono context.
+   * @param _handler
+   * @returns
+   */
+  override verifyToken(_handler: StrategyVerifyTokenFunction<Request>): this {
+    throw new Error("Use verifyTokenHandler() instead, which provides access to the Hono context.");
+  }
+
+  verifyTokenHandler(handler: StrategyVerifyTokenFunction<Context<E & OAuth2ServerEnv>>): this {
+    this.strategyOptions.verifyToken = handler;
+    return this;
+  }
+
+  override build(): HonoOIDCClientCredentialsFlow<E> {
+    const params: HonoOIDCClientCredentialsFlowOptions<E> = {
+      ...this.buildParams(),
+      strategyOptions: this.strategyOptions,
+    };
+    return new HonoOIDCClientCredentialsFlow<E>(params);
   }
 }
 

@@ -1,9 +1,6 @@
-/*import { ClientSecretBasic } from "../client_auth_methods/client_secret_basic.ts";
-import { ClientSecretPost } from "../client_auth_methods/client_secret_post.ts";
-import { NoneAuthMethod } from "../client_auth_methods/none.ts";
-import { ClientAuthMethod } from "../client_auth_methods/types.ts";
 import {
   ClientCredentialsGrantContext,
+  ClientCredentialsModel,
   ClientCredentialsTokenRequest,
 } from "../grants/client_credentials.ts";
 import {
@@ -15,85 +12,67 @@ import {
   OIDCClientCredentialsFlow,
   OIDCClientCredentialsFlowOptions,
 } from "../oidc/oidc_client_credentials.ts";
-import { StrategyVerifyTokenFunction } from "../strategy.ts";
-import { TokenType } from "../token_types/types.ts";
+import { OAuth2FlowBuilder } from "./flow_builder.ts";
 
-export class OIDCClientCredentialsBuilder {
-  protected params: OIDCClientCredentialsFlowOptions;
-  protected clientAuthenticationMethods: Map<string, ClientAuthMethod> = new Map();
+export class OIDCClientCredentialsBuilder extends OAuth2FlowBuilder {
+  protected model: ClientCredentialsModel;
+  protected discoveryUrl: string;
+  protected jwksEndpoint?: string;
+  protected openIdConfiguration?: Record<string, string | string[] | undefined>;
 
   constructor(params: Partial<OIDCClientCredentialsFlowOptions>) {
-    this.params = {
-      strategyOptions: params.strategyOptions || {},
-      model: params.model || {
-        generateAccessToken() {
-          return undefined;
-        },
-        getClient() {
-          return undefined;
-        },
+    const { model, discoveryUrl, jwksEndpoint, openIdConfiguration, ...rest } = params;
+    super(rest);
+    this.model = model || {
+      generateAccessToken() {
+        return undefined;
       },
-      discoveryUrl: params.discoveryUrl || "/.well-known/openid-configuration",
-      ...params,
+      getClient() {
+        return undefined;
+      },
     };
+    this.discoveryUrl = discoveryUrl || "/.well-known/openid-configuration";
+    this.jwksEndpoint = jwksEndpoint;
+    this.openIdConfiguration = openIdConfiguration;
   }
 
   static create(): OIDCClientCredentialsBuilder {
     return new OIDCClientCredentialsBuilder({});
   }
 
-  getAccessTokenLifetime(): number | undefined {
-    return this.params.accessTokenLifetime;
-  }
-
-  getSecuritySchemeName(): string | undefined {
-    return this.params.securitySchemeName;
-  }
-
-  getTokenEndpoint(): string | undefined {
-    return this.params.tokenEndpoint;
-  }
-
-  getDescription(): string | undefined {
-    return this.params.description;
-  }
-
-  getScopes(): Record<string, string> {
-    return this.params.scopes ? { ...this.params.scopes } : {};
-  }
-
-  setAccessTokenLifetime(lifetime: number): this {
-    this.params.accessTokenLifetime = lifetime;
+  override noneAuthenticationMethod(): this {
     return this;
   }
 
-  setSecuritySchemeName(name: string): this {
-    this.params.securitySchemeName = name;
+  setDiscoveryUrl(url: string): this {
+    this.discoveryUrl = url;
     return this;
   }
 
-  setTokenEndpoint(url: string): this {
-    this.params.tokenEndpoint = url;
+  setJwksEndpoint(url: string): this {
+    this.jwksEndpoint = url;
     return this;
   }
 
-  setTokenType(tokenType: TokenType): this {
-    this.params.tokenType = tokenType;
+  setOpenIdConfiguration(config: Record<string, string | string[] | undefined>): this {
+    this.openIdConfiguration = config;
     return this;
   }
 
-  setDescription(description: string): this {
-    this.params.description = description;
-    return this;
+  getDiscoveryUrl(): string {
+    return this.discoveryUrl;
   }
 
-  setScopes(scopes: Record<string, string>): this {
-    this.params.scopes = scopes;
-    return this;
+  getJwksEndpoint(): string | undefined {
+    return this.jwksEndpoint;
+  }
+
+  getOpenIdConfiguration(): Record<string, string | string[] | undefined> | undefined {
+    return this.openIdConfiguration;
   }
 
   getClient(handler: OAuth2GetClientFunction<ClientCredentialsTokenRequest>): this {
-    this.params.model.getClient = handler;
+    this.model.getClient = handler;
     return this;
   }
 
@@ -103,60 +82,23 @@ export class OIDCClientCredentialsBuilder {
       OAuth2AccessTokenResult | string
     >,
   ): this {
-    this.params.model.generateAccessToken = handler;
+    this.model.generateAccessToken = handler;
     return this;
   }
 
-  verifyToken(handler: StrategyVerifyTokenFunction<Request>): this {
-    this.params.strategyOptions.verifyToken = handler;
-    return this;
-  }
-
-  addClientAuthenticationMethod(
-    clientAuthenticationMethod: ClientAuthMethod,
-  ): this {
-    this.clientAuthenticationMethods.set(
-      clientAuthenticationMethod.method,
-      clientAuthenticationMethod,
-    );
-    return this;
-  }
-
-  clientSecretBasicAuthenticationMethod(): this {
-    const clientAuthenticationMethod = new ClientSecretBasic();
-    this.clientAuthenticationMethods.set(
-      clientAuthenticationMethod.method,
-      clientAuthenticationMethod,
-    );
-    return this;
-  }
-
-  clientSecretPostAuthenticationMethod(): this {
-    const clientAuthenticationMethod = new ClientSecretPost();
-    this.clientAuthenticationMethods.set(
-      clientAuthenticationMethod.method,
-      clientAuthenticationMethod,
-    );
-    return this;
-  }
-
-  noneAuthenticationMethod(): this {
-    const clientAuthenticationMethod = new NoneAuthMethod();
-    this.clientAuthenticationMethods.set(
-      clientAuthenticationMethod.method,
-      clientAuthenticationMethod,
-    );
-    return this;
+  protected override buildParams(): OIDCClientCredentialsFlowOptions {
+    return {
+      ...super.buildParams(),
+      model: this.model,
+      discoveryUrl: this.discoveryUrl,
+      jwksEndpoint: this.jwksEndpoint,
+      openIdConfiguration: this.openIdConfiguration,
+    };
   }
 
   build(): OIDCClientCredentialsFlow {
-    const params: OIDCClientCredentialsFlowOptions = { ...this.params };
-    if (this.clientAuthenticationMethods.size > 0) {
-      params.clientAuthenticationMethods = Array.from(
-        this.clientAuthenticationMethods.values(),
-      );
-    }
-    return new OIDCClientCredentialsFlow(params);
+    return new OIDCClientCredentialsFlow(
+      this.buildParams(),
+    );
   }
 }
-*/

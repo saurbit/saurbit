@@ -13,32 +13,16 @@
 export { OAuth2Server } from "./server.ts";
 export type { OAuth2ServerOptions } from "./server.ts";
 
-export {
-  AccessDeniedError,
-  InsufficientScopeError,
-  InvalidClientError,
-  InvalidGrantError,
-  InvalidRequestError,
-  InvalidScopeError,
-  InvalidTokenError,
-  OAuth2Error,
-  OAuth2Errors,
-  ServerError,
-  UnauthorizedClientError,
-  UnauthorizedRequestError,
-  UnsupportedGrantTypeError,
-  UnsupportedResponseTypeError,
-} from "./errors.ts";
-
-export type {
-  OAuth2AuthorizationCode,
-  OAuth2Client,
-  OAuth2Model,
-  OAuth2Scope,
-  OAuth2Token,
-} from "./types.ts";
+//#region Builders
 
 export { ClientCredentialsBuilder } from "./builders/client_credentials_builder.ts";
+export { OAuth2FlowBuilder } from "./builders/flow_builder.ts";
+export { OIDCClientCredentialsBuilder } from "./builders/oidc_client_credentials_builder.ts";
+
+//#endregion
+
+//#region  Client Authentication Methods
+
 export { ClientSecretBasic } from "./client_auth_methods/client_secret_basic.ts";
 export { ClientSecretPost } from "./client_auth_methods/client_secret_post.ts";
 export { NoneAuthMethod } from "./client_auth_methods/none.ts";
@@ -52,6 +36,10 @@ export type {
   ClientAuthMethodResponse,
   TokenEndpointAuthMethod,
 } from "./client_auth_methods/types.ts";
+
+//#endregion
+
+//#region Flows and Grants
 
 export type {
   OAuth2AccessTokenResult,
@@ -116,6 +104,10 @@ export { OIDCClientCredentialsFlow } from "./oidc/oidc_client_credentials.ts";
 export { OIDCMultipleFlows } from "./oidc/oidc_multiple_flows.ts";
 export type { OIDCFlow, OIDCFlowExtendedOptions, OIDCUserInfo } from "./oidc/types.ts";
 
+//#endregion
+
+//#region Token Types
+
 export { BearerTokenType, type BearerTokenValidation } from "./token_types/bearer_token.ts";
 export {
   DPoPTokenType,
@@ -123,6 +115,11 @@ export {
   type DPoPTokenTypeValidation,
 } from "./token_types/dpop_token.ts";
 export type { TokenType, TokenTypeValidationResponse } from "./token_types/types.ts";
+
+//#endregion
+
+//#region Utilities
+
 export type {
   JwksKeyStore,
   JwksRotationTimestampStore,
@@ -142,6 +139,32 @@ export {
   type ReplayDetector,
   type ReplayStore,
 } from "./utils/replay_store.ts";
+
+//#endregion
+
+//#region Errors
+
+export {
+  AccessDeniedError,
+  InsufficientScopeError,
+  InvalidClientError,
+  InvalidGrantError,
+  InvalidRequestError,
+  InvalidScopeError,
+  InvalidTokenError,
+  OAuth2Error,
+  OAuth2Errors,
+  ServerError,
+  UnauthorizedClientError,
+  UnauthorizedRequestError,
+  UnsupportedGrantTypeError,
+  UnsupportedResponseTypeError,
+} from "./errors.ts";
+
+//#endregion
+
+//#region Strategy
+
 export type {
   AppCredentials,
   AuthCredentials,
@@ -160,3 +183,17 @@ export {
   StrategyInvalidTokenTypeError,
   StrategyJwtVerificationError,
 } from "./strategy.ts";
+
+//#endregion
+
+//#region Types
+
+export type {
+  OAuth2AuthorizationCode,
+  OAuth2Client,
+  OAuth2Model,
+  OAuth2Scope,
+  OAuth2Token,
+} from "./types.ts";
+
+//#endregion
