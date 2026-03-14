@@ -33,7 +33,7 @@ export class OIDCClientCredentialsFlow extends AbstractClientCredentialsFlow imp
     return this.discoveryUrl;
   }
 
-  getJwksUri(): string | undefined {
+  getJwksEndpoint(): string | undefined {
     return this.jwksEndpoint;
   }
 
@@ -66,7 +66,7 @@ export class OIDCClientCredentialsFlow extends AbstractClientCredentialsFlow imp
     const host = typeof fullUrl === "string" ? fullUrl : new URL(this.getDiscoveryUrl()).origin;
 
     // Format jwks_uri if it's a relative path
-    let jwksEndpoint = this.getJwksUri();
+    let jwksEndpoint = this.getJwksEndpoint();
     if (jwksEndpoint) {
       jwksEndpoint = this.normalizeUrl(jwksEndpoint, host);
     }
