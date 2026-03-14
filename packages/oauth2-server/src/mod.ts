@@ -69,7 +69,7 @@ export type {
   AuthorizationCodeInitiationResponse,
   AuthorizationCodeModel,
   AuthorizationCodeProcessResponse,
-  AuthorizationCodeReqBody,
+  AuthorizationCodeReqData,
   AuthorizationCodeTokenRequest,
   AuthorizationCodeUser,
   GenerateAuthorizationCodeFunction,

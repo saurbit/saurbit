@@ -5,7 +5,7 @@ import {
   AuthorizationCodeFlowOptions,
   AuthorizationCodeGrantContext,
   AuthorizationCodeModel,
-  AuthorizationCodeReqBody,
+  AuthorizationCodeReqData,
   AuthorizationCodeTokenRequest,
   GenerateAuthorizationCodeFunction,
   GetUserForAuthenticationFunction,
@@ -20,12 +20,12 @@ import { OAuth2Flow } from "../mod.ts";
 import { OAuth2FlowBuilder } from "./flow_builder.ts";
 
 export class AuthorizationCodeBuilder<
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > extends OAuth2FlowBuilder {
-  protected model: AuthorizationCodeModel<AuthReqBody>;
+  protected model: AuthorizationCodeModel<AuthReqData>;
   protected authorizationEndpoint?: string;
 
-  constructor(params: Partial<AuthorizationCodeFlowOptions<AuthReqBody>>) {
+  constructor(params: Partial<AuthorizationCodeFlowOptions<AuthReqData>>) {
     const { model, authorizationEndpoint, ...rest } = params;
     super(rest);
     this.model = model || {
@@ -49,9 +49,9 @@ export class AuthorizationCodeBuilder<
   }
 
   static create<
-    AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
-  >(): AuthorizationCodeBuilder<AuthReqBody> {
-    return new AuthorizationCodeBuilder<AuthReqBody>({});
+    AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
+  >(): AuthorizationCodeBuilder<AuthReqData> {
+    return new AuthorizationCodeBuilder<AuthReqData>({});
   }
 
   setAuthorizationEndpoint(url: string): this {
@@ -106,14 +106,14 @@ export class AuthorizationCodeBuilder<
   getUserForAuthentication(
     handler: GetUserForAuthenticationFunction<
       AuthorizationCodeEndpointContext,
-      AuthReqBody
+      AuthReqData
     >,
   ): this {
     this.model.getUserForAuthentication = handler;
     return this;
   }
 
-  protected override buildParams(): AuthorizationCodeFlowOptions<AuthReqBody> {
+  protected override buildParams(): AuthorizationCodeFlowOptions<AuthReqData> {
     return {
       ...super.buildParams(),
       model: this.model,

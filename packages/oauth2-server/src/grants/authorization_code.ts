@@ -27,7 +27,7 @@ export interface AuthorizationCodeUser {
   [key: string]: unknown;
 }
 
-export interface AuthorizationCodeReqBody {
+export interface AuthorizationCodeReqData {
   [key: string]: unknown;
 }
 
@@ -212,11 +212,11 @@ export type GetUserForAuthenticationResult =
 
 export interface GetUserForAuthenticationFunction<
   TContext extends AuthorizationCodeEndpointContext = AuthorizationCodeEndpointContext,
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > {
   (
     context: TContext,
-    reqBody: AuthReqBody,
+    reqData: AuthReqData,
     request: Request,
   ):
     | Promise<
@@ -249,7 +249,7 @@ export interface GenerateAuthorizationCodeFunction<
  * to provide persistence for clients and tokens related to the authorization code grant.
  */
 export interface AuthorizationCodeModel<
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > extends
   OAuth2GrantModel<
     AuthorizationCodeTokenRequest | OAuth2RefreshTokenRequest,
@@ -277,7 +277,7 @@ export interface AuthorizationCodeModel<
 
   getUserForAuthentication: GetUserForAuthenticationFunction<
     AuthorizationCodeEndpointContext,
-    AuthReqBody
+    AuthReqData
   >;
 
   generateAuthorizationCode: GenerateAuthorizationCodeFunction<AuthorizationCodeEndpointContext>;
@@ -287,21 +287,21 @@ export interface AuthorizationCodeModel<
  * Options for configuring the authorization code grant flow.
  */
 export interface AuthorizationCodeFlowOptions<
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > extends OAuth2FlowOptions {
-  model: AuthorizationCodeModel<AuthReqBody>;
+  model: AuthorizationCodeModel<AuthReqData>;
   authorizationEndpoint?: string;
 }
 
 export abstract class AbstractAuthorizationCodeFlow<
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > extends OAuth2Flow implements AuthorizationCodeGrant {
   readonly grantType = "authorization_code" as const;
-  protected readonly model: AuthorizationCodeModel<AuthReqBody>;
+  protected readonly model: AuthorizationCodeModel<AuthReqData>;
 
   protected authorizationEndpoint: string = "/authorize";
 
-  constructor(options: AuthorizationCodeFlowOptions<AuthReqBody>) {
+  constructor(options: AuthorizationCodeFlowOptions<AuthReqData>) {
     const { model, authorizationEndpoint, ...flowOptions } = { ...options };
     super(flowOptions);
     this.model = model;
@@ -425,7 +425,7 @@ export abstract class AbstractAuthorizationCodeFlow<
 
   async processAuthorization(
     request: Request,
-    reqBody: AuthReqBody,
+    reqData: AuthReqData,
   ): Promise<AuthorizationCodeProcessResponse> {
     if (request.method !== "POST") {
       return {
@@ -458,7 +458,7 @@ export abstract class AbstractAuthorizationCodeFlow<
         ...context.context,
         scope: [...scope],
       },
-      reqBody,
+      reqData,
       request.clone(),
     );
 
@@ -529,7 +529,7 @@ export abstract class AbstractAuthorizationCodeFlow<
 
   async handleAuthorizationEndpoint(
     request: Request,
-    reqBody: AuthReqBody,
+    reqData: AuthReqData,
   ): Promise<AuthorizationCodeEndpointResponse> {
     if (request.method === "GET") {
       // In a real implementation, you would render a login page
@@ -556,7 +556,7 @@ export abstract class AbstractAuthorizationCodeFlow<
       // and if authentication is successful, generate an authorization code,
       // and redirect the user to the redirect_uri with the code and state as query parameters.
 
-      const result = await this.processAuthorization(request, reqBody);
+      const result = await this.processAuthorization(request, reqData);
 
       if (result.type === "error") {
         return result;
@@ -850,8 +850,8 @@ export abstract class AbstractAuthorizationCodeFlow<
 }
 
 export class AuthorizationCodeFlow<
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
-> extends AbstractAuthorizationCodeFlow<AuthReqBody> {
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
+> extends AbstractAuthorizationCodeFlow<AuthReqData> {
   toOpenAPISecurityScheme() {
     return {
       [this.getSecuritySchemeName()]: {

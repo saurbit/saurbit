@@ -207,7 +207,7 @@ export class HonoOIDCClientCredentialsFlow<
 
 //#endregion
 
-//#region Builder
+//#region Builders
 
 export class HonoClientCredentialsFlowBuilder<
   E extends Env = Env,

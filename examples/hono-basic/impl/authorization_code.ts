@@ -8,7 +8,7 @@ import { html } from "hono/html";
 import { HTTPRateLimitException, verifyTokenFunction } from "./common.ts";
 
 export const authorizationCodeFlow = new HonoAuthorizationCodeFlow({
-  parseAuthorizationEndpointBody: async (context) => {
+  parseAuthorizationEndpointData: async (context) => {
     const formData = await context.req.formData();
     const username = formData.get("username");
     const password = formData.get("password");

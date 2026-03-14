@@ -5,7 +5,7 @@ import { HTTPException } from "hono/http-exception";
 import {
   AuthorizationCodeFlow,
   AuthorizationCodeFlowOptions,
-  AuthorizationCodeReqBody,
+  AuthorizationCodeReqData,
   evaluateStrategy,
   InvalidRequestError,
   OAuth2FlowTokenResponse,
@@ -25,15 +25,16 @@ import {
 import { OIDCAuthorizationCodeFlow } from "@saurbit/oauth2-server";
 import { OIDCAuthorizationCodeProcessResponse } from "@saurbit/oauth2-server";
 import { OIDCAuthorizationCodeEndpointResponse } from "@saurbit/oauth2-server";
+import { AuthorizationCodeBuilder } from "@saurbit/oauth2-server";
 
 //#region Types and Interfaces
 
 export interface HonoAuthorizationCodeFlowOptions<
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
   E extends Env = Env,
-> extends Omit<AuthorizationCodeFlowOptions<AuthReqBody>, "strategyOptions"> {
+> extends Omit<AuthorizationCodeFlowOptions<AuthReqData>, "strategyOptions"> {
   strategyOptions: HonoOAuth2StrategyOptions<E>;
-  parseAuthorizationEndpointBody: (context: Context<E & OAuth2ServerEnv>) => Promise<AuthReqBody>;
+  parseAuthorizationEndpointData: (context: Context<E & OAuth2ServerEnv>) => Promise<AuthReqData>;
 }
 
 export interface HonoAuthorizationCodeMethods<E extends Env = Env> extends HonoMethods<E> {
@@ -73,11 +74,11 @@ export interface HonoAuthorizationCodeMethods<E extends Env = Env> extends HonoM
 //#region OpenID Connect Types and Interfaces
 
 export interface HonoOIDCAuthorizationCodeFlowOptions<
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
   E extends Env = Env,
-> extends Omit<OIDCAuthorizationCodeFlowOptions<AuthReqBody>, "strategyOptions"> {
+> extends Omit<OIDCAuthorizationCodeFlowOptions<AuthReqData>, "strategyOptions"> {
   strategyOptions: HonoOAuth2StrategyOptions<E>;
-  parseAuthorizationEndpointBody: (context: Context<E & OAuth2ServerEnv>) => Promise<AuthReqBody>;
+  parseAuthorizationEndpointData: (context: Context<E & OAuth2ServerEnv>) => Promise<AuthReqData>;
 }
 
 //#endregion
@@ -86,8 +87,8 @@ export interface HonoOIDCAuthorizationCodeFlowOptions<
 
 export class HonoAuthorizationCodeFlow<
   E extends Env = Env,
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
-> extends AuthorizationCodeFlow<AuthReqBody> implements HonoAdapted<E> {
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
+> extends AuthorizationCodeFlow<AuthReqData> implements HonoAdapted<E> {
   readonly #verifyTokenHandler: (
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<StrategyResult>;
@@ -95,9 +96,9 @@ export class HonoAuthorizationCodeFlow<
 
   readonly #failedAuthorizationAction: FailedAuthorizationAction<E>;
 
-  readonly #parseAuthorizationEndpointBody: (
+  readonly #parseAuthorizationEndpointData: (
     context: Context<E & OAuth2ServerEnv>,
-  ) => Promise<AuthReqBody>;
+  ) => Promise<AuthReqData>;
 
   readonly #hono: HonoAuthorizationCodeMethods<E> = {
     authorizeMiddleware: (scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> => {
@@ -122,7 +123,7 @@ export class HonoAuthorizationCodeFlow<
     ): Promise<OIDCAuthorizationCodeProcessResponse> => {
       return await this.processAuthorization(
         context.req.raw.clone(),
-        await this.#parseAuthorizationEndpointBody(context),
+        await this.#parseAuthorizationEndpointData(context),
       );
     },
 
@@ -174,7 +175,7 @@ export class HonoAuthorizationCodeFlow<
     },
   };
 
-  constructor(options: HonoAuthorizationCodeFlowOptions<AuthReqBody, E>) {
+  constructor(options: HonoAuthorizationCodeFlowOptions<AuthReqData, E>) {
     const { strategyOptions, ...flowOptions } = options;
 
     super({
@@ -188,7 +189,7 @@ export class HonoAuthorizationCodeFlow<
       });
     });
 
-    this.#parseAuthorizationEndpointBody = options.parseAuthorizationEndpointBody;
+    this.#parseAuthorizationEndpointData = options.parseAuthorizationEndpointData;
 
     this.#verifyTokenHandler = async (context: Context<E & OAuth2ServerEnv>) => {
       const honoVerifyToken = strategyOptions.verifyToken;
@@ -237,8 +238,8 @@ export class HonoAuthorizationCodeFlow<
 
 export class HonoOIDCAuthorizationCodeFlow<
   E extends Env = Env,
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
-> extends OIDCAuthorizationCodeFlow<AuthReqBody> implements HonoAdapted<E> {
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
+> extends OIDCAuthorizationCodeFlow<AuthReqData> implements HonoAdapted<E> {
   readonly #verifyTokenHandler: (
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<StrategyResult>;
@@ -246,9 +247,9 @@ export class HonoOIDCAuthorizationCodeFlow<
 
   readonly #failedAuthorizationAction: FailedAuthorizationAction<E>;
 
-  readonly #parseAuthorizationEndpointBody: (
+  readonly #parseAuthorizationEndpointData: (
     context: Context<E & OAuth2ServerEnv>,
-  ) => Promise<AuthReqBody>;
+  ) => Promise<AuthReqData>;
 
   readonly #hono: HonoAuthorizationCodeMethods<E> = {
     authorizeMiddleware: (scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> => {
@@ -273,7 +274,7 @@ export class HonoOIDCAuthorizationCodeFlow<
     ): Promise<OIDCAuthorizationCodeProcessResponse> => {
       return await this.processAuthorization(
         context.req.raw.clone(),
-        await this.#parseAuthorizationEndpointBody(context),
+        await this.#parseAuthorizationEndpointData(context),
       );
     },
 
@@ -325,7 +326,7 @@ export class HonoOIDCAuthorizationCodeFlow<
     },
   };
 
-  constructor(options: HonoOIDCAuthorizationCodeFlowOptions<AuthReqBody, E>) {
+  constructor(options: HonoOIDCAuthorizationCodeFlowOptions<AuthReqData, E>) {
     const { strategyOptions, ...flowOptions } = options;
 
     super({
@@ -339,7 +340,7 @@ export class HonoOIDCAuthorizationCodeFlow<
       });
     });
 
-    this.#parseAuthorizationEndpointBody = options.parseAuthorizationEndpointBody;
+    this.#parseAuthorizationEndpointData = options.parseAuthorizationEndpointData;
 
     this.#verifyTokenHandler = async (context: Context<E & OAuth2ServerEnv>) => {
       const honoVerifyToken = strategyOptions.verifyToken;
@@ -383,6 +384,86 @@ export class HonoOIDCAuthorizationCodeFlow<
 
   hono(): Readonly<HonoAuthorizationCodeMethods<E>> {
     return Object.freeze(this.#hono);
+  }
+}
+
+//#endregion
+
+//#region Builders
+
+export class HonoAuthorizationCodeFlowBuilder<
+  E extends Env = Env,
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
+> extends AuthorizationCodeBuilder<AuthReqData> {
+  protected strategyOptions: HonoOAuth2StrategyOptions<E> = {};
+  protected _parseAuthorizationEndpointData?: (
+    context: Context<E & OAuth2ServerEnv>,
+  ) => Promise<AuthReqData>;
+
+  constructor(options: Partial<HonoAuthorizationCodeFlowOptions<AuthReqData, E>>) {
+    const { strategyOptions, parseAuthorizationEndpointData, ...flowOptions } = options;
+    super({
+      ...flowOptions,
+      strategyOptions: {},
+    });
+    this.strategyOptions = strategyOptions || {};
+    this._parseAuthorizationEndpointData = parseAuthorizationEndpointData;
+  }
+
+  static override create<
+    E extends Env = Env,
+    AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
+  >(
+    options?: Partial<HonoAuthorizationCodeFlowOptions<AuthReqData, E>>,
+  ) {
+    return new HonoAuthorizationCodeFlowBuilder<E, AuthReqData>(options || {});
+  }
+
+  failedAuthorizationAction(action: FailedAuthorizationAction<E>): this {
+    this.strategyOptions.failedAuthorizationAction = action;
+    return this;
+  }
+
+  /**
+   * This method is overridden to prevent setting a verifyToken handler that does not have access to the Hono context.
+   * Use `verifyTokenHandler` instead to set a handler that receives the Hono context.
+   * @deprecated Use `verifyTokenHandler` instead to set a handler that receives the Hono context.
+   * @param _handler
+   * @returns
+   */
+  override verifyToken(_handler: StrategyVerifyTokenFunction<Request>): this {
+    throw new Error("Use verifyTokenHandler() instead, which provides access to the Hono context.");
+  }
+
+  verifyTokenHandler(handler: StrategyVerifyTokenFunction<Context<E & OAuth2ServerEnv>>): this {
+    this.strategyOptions.verifyToken = handler;
+    return this;
+  }
+
+  parseAuthorizationEndpointData(
+    handler: (context: Context<E & OAuth2ServerEnv>) => Promise<AuthReqData>,
+  ): this {
+    this._parseAuthorizationEndpointData = handler;
+    return this;
+  }
+
+  override build(): HonoAuthorizationCodeFlow<E, AuthReqData> {
+    const params: HonoAuthorizationCodeFlowOptions<AuthReqData, E> = {
+      ...this.buildParams(),
+      strategyOptions: this.strategyOptions,
+      parseAuthorizationEndpointData: this._parseAuthorizationEndpointData || (async (context) => {
+        const formData = await context.req.formData();
+        const data: Record<string, unknown> = {};
+
+        for (const key of formData.keys()) {
+          const values = formData.getAll(key);
+          data[key] = values.length === 1 ? values[0] : values;
+        }
+
+        return data as AuthReqData;
+      }),
+    };
+    return new HonoAuthorizationCodeFlow<E, AuthReqData>(params);
   }
 }
 

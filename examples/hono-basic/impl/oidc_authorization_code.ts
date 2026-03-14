@@ -10,7 +10,7 @@ import { HTTPRateLimitException, verifyTokenFunction } from "./common.ts";
 export const oidcAuthorizationCodeFlow = new HonoOIDCAuthorizationCodeFlow({
   discoveryUrl: "http://localhost:3000/.well-known/openid-configuration",
   jwksEndpoint: "/jwks",
-  parseAuthorizationEndpointBody: async (context) => {
+  parseAuthorizationEndpointData: async (context) => {
     const formData = await context.req.formData();
     const username = formData.get("username");
     const password = formData.get("password");

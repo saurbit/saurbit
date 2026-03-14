@@ -16,7 +16,7 @@ import {
   AuthorizationCodeInitiationResponse,
   AuthorizationCodeModel,
   AuthorizationCodeProcessResponse,
-  AuthorizationCodeReqBody,
+  AuthorizationCodeReqData,
   GenerateAuthorizationCodeFunction,
   GetUserForAuthenticationFunction,
 } from "../grants/authorization_code.ts";
@@ -130,8 +130,8 @@ export interface OIDCAuthorizationCodeAccessTokenResult extends AuthorizationCod
 }
 
 export interface OIDCAuthorizationCodeModel<
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
-> extends AuthorizationCodeModel<AuthReqBody> {
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
+> extends AuthorizationCodeModel<AuthReqData> {
   getClientForAuthentication: OAuth2GetClientFunction<OIDCAuthorizationCodeEndpointRequest>;
 
   generateAccessToken: OAuth2GenerateAccessTokenFunction<
@@ -145,7 +145,7 @@ export interface OIDCAuthorizationCodeModel<
 
   getUserForAuthentication: GetUserForAuthenticationFunction<
     OIDCAuthorizationCodeEndpointContext,
-    AuthReqBody
+    AuthReqData
   >;
 
   generateAuthorizationCode: GenerateAuthorizationCodeFunction<
@@ -167,9 +167,9 @@ export interface OIDCAuthorizationCodeModel<
  * Options for configuring the OpenID Connect authorization code flow.
  */
 export interface OIDCAuthorizationCodeFlowOptions<
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
-> extends AuthorizationCodeFlowOptions<AuthReqBody>, OIDCFlowExtendedOptions {
-  model: OIDCAuthorizationCodeModel<AuthReqBody>;
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
+> extends AuthorizationCodeFlowOptions<AuthReqData>, OIDCFlowExtendedOptions {
+  model: OIDCAuthorizationCodeModel<AuthReqData>;
   /**
    * The URL where the OpenID Provider's JSON Web Key Set (JWKS) can be found.
    * This is used for validating tokens issued by the provider. If not provided, it will be derived from the discovery document.
@@ -179,13 +179,13 @@ export interface OIDCAuthorizationCodeFlowOptions<
 }
 
 export class OIDCAuthorizationCodeFlow<
-  AuthReqBody extends AuthorizationCodeReqBody = AuthorizationCodeReqBody,
-> extends AbstractAuthorizationCodeFlow<AuthReqBody> implements OIDCFlow {
+  AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
+> extends AbstractAuthorizationCodeFlow<AuthReqData> implements OIDCFlow {
   protected discoveryUrl: string;
   protected jwksEndpoint: string;
   protected openIdConfiguration?: Record<string, string | string[] | undefined>;
 
-  constructor(options: OIDCAuthorizationCodeFlowOptions<AuthReqBody>) {
+  constructor(options: OIDCAuthorizationCodeFlowOptions<AuthReqData>) {
     const { discoveryUrl, jwksEndpoint, openIdConfiguration, ...baseOptions } = options;
     super(baseOptions);
     this.discoveryUrl = discoveryUrl;
@@ -206,7 +206,7 @@ export class OIDCAuthorizationCodeFlow<
   }
 
   async getUserInfo(accessToken: string): Promise<OIDCUserInfo | undefined> {
-    const model = this.model as OIDCAuthorizationCodeModel<AuthReqBody>;
+    const model = this.model as OIDCAuthorizationCodeModel<AuthReqData>;
     if (typeof model.getUserInfo === "function") {
       return await model.getUserInfo(accessToken);
     }
@@ -446,16 +446,16 @@ export class OIDCAuthorizationCodeFlow<
 
   override async processAuthorization(
     request: Request,
-    reqBody: AuthReqBody,
+    reqData: AuthReqData,
   ): Promise<OIDCAuthorizationCodeProcessResponse> {
-    return await super.processAuthorization(request, reqBody);
+    return await super.processAuthorization(request, reqData);
   }
 
   override async handleAuthorizationEndpoint(
     request: Request,
-    reqBody: AuthReqBody,
+    reqData: AuthReqData,
   ): Promise<OIDCAuthorizationCodeEndpointResponse> {
-    return await super.handleAuthorizationEndpoint(request, reqBody);
+    return await super.handleAuthorizationEndpoint(request, reqData);
   }
 
   override getScopes(): Record<string, string> | undefined {
