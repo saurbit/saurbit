@@ -1,9 +1,8 @@
 import { StrategyInternalError } from "@saurbit/oauth2-server";
 
-import { BearerTokenType, HonoClientCredentialsFlow } from "../oauth2_hono_adapter/mod.ts";
+import { BearerTokenType, HonoClientCredentialsFlowBuilder } from "../oauth2_hono_adapter/mod.ts";
 import { HTTPException } from "hono/http-exception";
 import { verifyTokenFunction } from "./common.ts";
-import { HonoClientCredentialsFlowBuilder } from "../oauth2_hono_adapter/client_credentials.ts";
 
 export const clientCredentialsFlow = HonoClientCredentialsFlowBuilder
   .create()
@@ -57,63 +56,6 @@ export const clientCredentialsFlow = HonoClientCredentialsFlowBuilder
       message,
     });
   }).build();
-
-export const clientCredentialsFlowInstance = new HonoClientCredentialsFlow({
-  model: {
-    getClient: async ({
-      clientId,
-      clientSecret: _c,
-      grantType: _g,
-      scope: _s,
-    }) => {
-      console.log("getClient called with:", { clientId, grantType: _g, scope: _s });
-      if (clientId === "my-client") {
-        return await Promise.resolve({
-          id: "my-client",
-          redirectUris: [],
-          grants: ["client_credentials"],
-          scopes: ["content:read", "content:write"],
-        });
-      }
-    },
-    generateAccessToken: async ({
-      accessTokenLifetime: _a,
-      client: _c,
-      grantType: _g,
-      scope,
-      tokenType: _t,
-    }) => {
-      console.log("generateAccessToken called with:", {
-        client: _c,
-        grantType: _g,
-        scope,
-        tokenType: _t,
-      });
-      // In a real implementation, you would generate a secure token here
-      return await Promise.resolve("admin-" + scope.join(","));
-    },
-  },
-  strategyOptions: {
-    failedAuthorizationAction: (_, error) => {
-      // You can perform additional actions here, such as logging or modifying the response
-      console.log("Authorization failed:", { error: error.name, message: error.message });
-      let message: string;
-      if (Deno.env.get("DENO_ENV") === "production") {
-        message = error instanceof StrategyInternalError ? "Internal Server Error" : "Unauthorized";
-      } else {
-        message = "Unauthorized";
-      }
-      throw new HTTPException(401, {
-        message,
-      });
-    },
-    verifyToken: verifyTokenFunction,
-  },
-  accessTokenLifetime: 3600,
-  securitySchemeName: "honoClientCredentials",
-  clientAuthenticationMethods: ["client_secret_basic", "client_secret_post"],
-  tokenType: new BearerTokenType(),
-});
 
 // Set the description and scopes for the OpenAPI documentation
 clientCredentialsFlow

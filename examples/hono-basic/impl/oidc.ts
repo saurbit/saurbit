@@ -1,4 +1,4 @@
-import { HonoOIDCMultipleFlows } from "../oauth2_hono_adapter/oidc_multiple_flow.ts";
+import { HonoOIDCMultipleFlows } from "../oauth2_hono_adapter/mod.ts";
 import { oidcAuthorizationCodeFlow } from "./oidc_authorization_code.ts";
 
 export const oidcMultipleFlows = new HonoOIDCMultipleFlows({

@@ -25,5 +25,9 @@ export {
 } from "./authorization_code.ts";
 export {
   HonoClientCredentialsFlow,
+  HonoClientCredentialsFlowBuilder,
   type HonoClientCredentialsFlowOptions,
+  HonoOIDCClientCredentialsFlow,
+  type HonoOIDCClientCredentialsFlowOptions,
 } from "./client_credentials.ts";
+export { type HonoOIDCFlow, HonoOIDCMultipleFlows } from "./oidc_multiple_flow.ts";
