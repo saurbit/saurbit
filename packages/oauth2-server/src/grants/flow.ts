@@ -143,7 +143,7 @@ export abstract class OAuth2Flow {
   }
 
   //
-  protected securitySchemeName: string = "oauth2-auth-flow";
+  protected securitySchemeName: string = "oauth2-flow";
   /** Default lifetime (in seconds) for access tokens. @default {3600} */
   protected accessTokenLifetime: number = 3600;
   protected tokenEndpoint: string = "/token";

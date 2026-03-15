@@ -1,18 +1,3 @@
-/**
- * @module
- * A framework-agnostic OAuth 2.0 authorization server for Deno.
- *
- * @example
- * ```ts
- * import { OAuth2Server } from "@saurbit/oauth2-server";
- *
- * const server = new OAuth2Server({ model: myModel });
- * ```
- */
-
-export { OAuth2Server } from "./server.ts";
-export type { OAuth2ServerOptions } from "./server.ts";
-
 //#region Builders
 
 export { AuthorizationCodeFlowBuilder } from "./builders/authorization_code_builder.ts";

@@ -1,29 +1,39 @@
 import { assertEquals, assertInstanceOf } from "@std/assert";
-import { InvalidRequestError, OAuth2Error, OAuth2Server } from "./src/mod.ts";
-import type { OAuth2Model } from "./src/mod.ts";
+import { ClientCredentialsFlow, InvalidRequestError, OAuth2Error } from "./src/mod.ts";
+import type { ClientCredentialsFlowOptions, ClientCredentialsModel } from "./src/mod.ts";
 
 /** Minimal stub model for testing. */
-function createStubModel(): OAuth2Model {
+function createStubModel(): ClientCredentialsModel {
   return {
     getClient: () => Promise.resolve(undefined),
-    saveToken: () => Promise.resolve(undefined!),
-    getAccessToken: () => Promise.resolve(undefined),
+    generateAccessToken: () => Promise.resolve(undefined),
   };
 }
 
-Deno.test("OAuth2Server - can be instantiated with default options", () => {
-  const server = new OAuth2Server({ model: createStubModel() });
-  assertEquals(server.options.accessTokenLifetime, 3600);
-  assertEquals(server.options.refreshTokenLifetime, 1_209_600);
-  assertEquals(server.options.authorizationCodeLifetime, 300);
+// minimal stub strategy options for testing
+function createStubStrategy(): ClientCredentialsFlowOptions["strategyOptions"] {
+  return {};
+}
+
+Deno.test("OAuth2Server - ClientCredentialsFlow can be instantiated with some default options", () => {
+  const flow = new ClientCredentialsFlow({
+    model: createStubModel(),
+    strategyOptions: createStubStrategy(),
+  });
+  assertEquals(flow.getAccessTokenLifetime(), 3600);
+  assertEquals(flow.getSecuritySchemeName(), "oauth2-flow");
+  assertEquals(flow.grantType, "client_credentials");
 });
 
-Deno.test("OAuth2Server - allows overriding default options", () => {
-  const server = new OAuth2Server({
+Deno.test("OAuth2Server - ClientCredentialsFlow allows overriding default options", () => {
+  const flow = new ClientCredentialsFlow({
     model: createStubModel(),
+    strategyOptions: createStubStrategy(),
     accessTokenLifetime: 7200,
+    securitySchemeName: "custom-security-scheme",
   });
-  assertEquals(server.options.accessTokenLifetime, 7200);
+  assertEquals(flow.getAccessTokenLifetime(), 7200);
+  assertEquals(flow.getSecuritySchemeName(), "custom-security-scheme");
 });
 
 Deno.test("OAuth2Error - contains correct status and error code", () => {
