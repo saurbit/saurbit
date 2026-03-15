@@ -12,7 +12,7 @@ import {
 } from "../grants/flow.ts";
 import { OAuth2FlowBuilder } from "./flow_builder.ts";
 
-export class ClientCredentialsBuilder extends OAuth2FlowBuilder {
+export class ClientCredentialsFlowBuilder extends OAuth2FlowBuilder {
   protected model: ClientCredentialsModel;
 
   constructor(params: Partial<ClientCredentialsFlowOptions>) {

@@ -1,8 +1,8 @@
 import type { Context, Env, MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
-  ClientCredentialsBuilder,
   ClientCredentialsFlow,
+  ClientCredentialsFlowBuilder,
   ClientCredentialsFlowOptions,
   evaluateStrategy,
   OAuth2FlowTokenResponse,
@@ -19,7 +19,7 @@ import {
   OAuth2ServerEnv,
 } from "./types.ts";
 import { OIDCClientCredentialsFlow } from "@saurbit/oauth2-server";
-import { OIDCClientCredentialsBuilder } from "@saurbit/oauth2-server";
+import { OIDCClientCredentialsFlowBuilder } from "@saurbit/oauth2-server";
 
 //#region Types and Interfaces
 
@@ -211,7 +211,7 @@ export class HonoOIDCClientCredentialsFlow<
 
 export class HonoClientCredentialsFlowBuilder<
   E extends Env = Env,
-> extends ClientCredentialsBuilder {
+> extends ClientCredentialsFlowBuilder {
   protected strategyOptions: HonoOAuth2StrategyOptions<E> = {};
 
   constructor(options: Partial<HonoClientCredentialsFlowOptions<E>>) {
@@ -261,7 +261,7 @@ export class HonoClientCredentialsFlowBuilder<
 
 export class HonoOIDCClientCredentialsFlowBuilder<
   E extends Env = Env,
-> extends OIDCClientCredentialsBuilder {
+> extends OIDCClientCredentialsFlowBuilder {
   protected strategyOptions: HonoOAuth2StrategyOptions<E> = {};
 
   constructor(options: Partial<HonoOIDCClientCredentialsFlowOptions<E>>) {

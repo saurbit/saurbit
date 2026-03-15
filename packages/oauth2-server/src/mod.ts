@@ -15,10 +15,10 @@ export type { OAuth2ServerOptions } from "./server.ts";
 
 //#region Builders
 
-export { AuthorizationCodeBuilder } from "./builders/authorization_code_builder.ts";
-export { ClientCredentialsBuilder } from "./builders/client_credentials_builder.ts";
+export { AuthorizationCodeFlowBuilder } from "./builders/authorization_code_builder.ts";
+export { ClientCredentialsFlowBuilder } from "./builders/client_credentials_builder.ts";
 export { OAuth2FlowBuilder } from "./builders/flow_builder.ts";
-export { OIDCClientCredentialsBuilder } from "./builders/oidc_client_credentials_builder.ts";
+export { OIDCClientCredentialsFlowBuilder } from "./builders/oidc_client_credentials_builder.ts";
 
 //#endregion
 

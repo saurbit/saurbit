@@ -14,7 +14,7 @@ import {
 } from "../oidc/oidc_client_credentials.ts";
 import { OAuth2FlowBuilder } from "./flow_builder.ts";
 
-export class OIDCClientCredentialsBuilder extends OAuth2FlowBuilder {
+export class OIDCClientCredentialsFlowBuilder extends OAuth2FlowBuilder {
   protected model: ClientCredentialsModel;
   protected discoveryUrl: string;
   protected jwksEndpoint?: string;

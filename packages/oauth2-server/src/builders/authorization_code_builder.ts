@@ -19,7 +19,7 @@ import {
 import { OAuth2Flow } from "../mod.ts";
 import { OAuth2FlowBuilder } from "./flow_builder.ts";
 
-export class AuthorizationCodeBuilder<
+export class AuthorizationCodeFlowBuilder<
   AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > extends OAuth2FlowBuilder {
   protected model: AuthorizationCodeModel<AuthReqData>;

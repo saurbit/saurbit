@@ -28,7 +28,7 @@ import {
 import { OIDCAuthorizationCodeFlow } from "@saurbit/oauth2-server";
 import { OIDCAuthorizationCodeProcessResponse } from "@saurbit/oauth2-server";
 import { OIDCAuthorizationCodeEndpointResponse } from "@saurbit/oauth2-server";
-import { AuthorizationCodeBuilder } from "@saurbit/oauth2-server";
+import { AuthorizationCodeFlowBuilder } from "@saurbit/oauth2-server";
 
 //#region Types and Interfaces
 
@@ -437,7 +437,7 @@ export class HonoOIDCAuthorizationCodeFlow<
 export class HonoAuthorizationCodeFlowBuilder<
   E extends Env = Env,
   AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
-> extends AuthorizationCodeBuilder<AuthReqData> {
+> extends AuthorizationCodeFlowBuilder<AuthReqData> {
   protected strategyOptions: HonoOAuth2StrategyOptions<E> = {};
   protected parseAuthorizationEndpointDataHandler: (
     context: Context<E & OAuth2ServerEnv>,
