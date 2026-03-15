@@ -3,8 +3,11 @@
 import type { Context, Env, MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
+  AuthorizationCodeEndpointResponse,
   AuthorizationCodeFlow,
   AuthorizationCodeFlowOptions,
+  AuthorizationCodeInitiationResponse,
+  AuthorizationCodeProcessResponse,
   AuthorizationCodeReqData,
   evaluateStrategy,
   InvalidRequestError,
@@ -38,6 +41,38 @@ export interface HonoAuthorizationCodeFlowOptions<
 }
 
 export interface HonoAuthorizationCodeMethods<E extends Env = Env> extends HonoMethods<E> {
+  /**
+   * This method is a convenience method that combines the logic of initiating (GET) the authorization code flow for Hono.
+   * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
+   * @param context
+   * @returns
+   */
+  initiateAuthorization(
+    context: Context,
+  ): Promise<AuthorizationCodeInitiationResponse>;
+
+  /**
+   * This method is a convenience method that combines the logic of processing (POST) the authorization code flow for Hono.
+   * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
+   * @param context
+   * @returns
+   */
+  processAuthorization(
+    context: Context,
+  ): Promise<AuthorizationCodeProcessResponse>;
+
+  /**
+   * This method is a convenience method that handles the authorization endpoint logic for Hono.
+   * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
+   * @param context
+   * @returns
+   */
+  handleAuthorizationEndpoint(
+    context: Context,
+  ): Promise<AuthorizationCodeEndpointResponse>;
+}
+
+export interface HonoOIDCAuthorizationCodeMethods<E extends Env = Env> extends HonoMethods<E> {
   /**
    * This method is a convenience method that combines the logic of initiating (GET) the authorization code flow for Hono.
    * It checks the HTTP method of the request and calls the appropriate method to handle the authorization endpoint logic.
@@ -259,7 +294,7 @@ export class HonoOIDCAuthorizationCodeFlow<
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<AuthReqData>;
 
-  readonly #hono: HonoAuthorizationCodeMethods<E> = {
+  readonly #hono: HonoOIDCAuthorizationCodeMethods<E> = {
     authorizeMiddleware: (scopes?: string[]): MiddlewareHandler<E & OAuth2ServerEnv> => {
       return scopes?.length ? this.#createAuthorizeMiddleware(scopes) : this.#authorizeMiddleware;
     },
@@ -390,7 +425,7 @@ export class HonoOIDCAuthorizationCodeFlow<
     };
   }
 
-  hono(): Readonly<HonoAuthorizationCodeMethods<E>> {
+  hono(): Readonly<HonoOIDCAuthorizationCodeMethods<E>> {
     return Object.freeze(this.#hono);
   }
 }

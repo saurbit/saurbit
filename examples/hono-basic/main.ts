@@ -44,6 +44,36 @@ app.get(
 );
 
 app.get("/authorize", async (c) => {
+  //if (/* already authenticated */) {
+  //  try {
+  //    const result = await authorizationCodeFlow.processAuthorization(c.req.raw, {
+  //      // Pass credentials if already authenticated. It must be handled in "parseAuthorizationEndpointData".
+  //    });
+  //    if (result.type === "code") {
+  //      // redirect the user to the client's redirect_uri with the authorization code and state as query parameters
+  //      const { user, code, context: { state, redirectUri } } = result.authorizationCodeResponse;
+  //      console.log("Authorization successful:", {
+  //        user: user?.username,
+  //        code,
+  //        state,
+  //      });
+  //      const searchParams = new URLSearchParams();
+  //      searchParams.set("code", code);
+  //      if (state) {
+  //        searchParams.set("state", state);
+  //      }
+  //      return c.redirect(`${redirectUri}?${searchParams.toString()}`);
+  //    } else if (result.type === "continue") {
+  //      // In a real implementation, you would render a consent page here for the user to authorize the client to access their resources.
+  //      return c.json({ message: "Consent page was not implemented" }, 500);
+  //    }
+  //  } catch (error) {
+  //    console.error("Unexpected error at authorization endpoint:", {
+  //      error: error instanceof Error ? { name: error.name, message: error.message } : error,
+  //    });
+  //  }
+  //}
+
   const result = await authorizationCodeFlow.hono().handleAuthorizationEndpoint(c);
   if (result.type === "initiated") {
     return c.html(HtmlFormContent({ usernameField: "username", passwordField: "password" }));
