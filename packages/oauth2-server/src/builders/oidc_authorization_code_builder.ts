@@ -1,11 +1,6 @@
 import {
   AuthorizationCodeAccessTokenResult,
-  AuthorizationCodeEndpointContext,
-  AuthorizationCodeEndpointRequest,
-  AuthorizationCodeFlow,
-  AuthorizationCodeFlowOptions,
   AuthorizationCodeGrantContext,
-  AuthorizationCodeModel,
   AuthorizationCodeReqData,
   AuthorizationCodeTokenRequest,
   GenerateAuthorizationCodeFunction,
@@ -17,16 +12,34 @@ import {
   OAuth2GetClientFunction,
   OAuth2RefreshTokenRequest,
 } from "../grants/flow.ts";
+import {
+  OIDCAuthorizationCodeAccessTokenResult,
+  OIDCAuthorizationCodeEndpointContext,
+  OIDCAuthorizationCodeEndpointRequest,
+  OIDCAuthorizationCodeFlow,
+  OIDCAuthorizationCodeFlowOptions,
+  OIDCAuthorizationCodeModel,
+} from "../oidc/oidc_authorization_code.ts";
 import { OAuth2FlowBuilder } from "./flow_builder.ts";
 
-export class AuthorizationCodeFlowBuilder<
+export class OIDCAuthorizationCodeFlowBuilder<
   AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > extends OAuth2FlowBuilder {
-  protected model: AuthorizationCodeModel<AuthReqData>;
+  protected model: OIDCAuthorizationCodeModel<AuthReqData>;
+  protected discoveryUrl: string;
+  protected jwksEndpoint: string;
+  protected openIdConfiguration?: Record<string, string | string[] | undefined>;
   protected authorizationEndpoint?: string;
 
-  constructor(params: Partial<AuthorizationCodeFlowOptions<AuthReqData>>) {
-    const { model, authorizationEndpoint, ...rest } = params;
+  constructor(params: Partial<OIDCAuthorizationCodeFlowOptions<AuthReqData>>) {
+    const {
+      model,
+      authorizationEndpoint,
+      discoveryUrl,
+      jwksEndpoint,
+      openIdConfiguration,
+      ...rest
+    } = params;
     super(rest);
     this.model = model || {
       generateAccessToken() {
@@ -45,7 +58,37 @@ export class AuthorizationCodeFlowBuilder<
         return undefined;
       },
     };
+    this.discoveryUrl = discoveryUrl || "/.well-known/openid-configuration";
+    this.jwksEndpoint = jwksEndpoint || "/.well-known/jwks.json";
+    this.openIdConfiguration = openIdConfiguration;
     this.authorizationEndpoint = authorizationEndpoint;
+  }
+
+  setDiscoveryUrl(url: string): this {
+    this.discoveryUrl = url;
+    return this;
+  }
+
+  setJwksEndpoint(url: string): this {
+    this.jwksEndpoint = url;
+    return this;
+  }
+
+  setOpenIdConfiguration(config: Record<string, string | string[] | undefined>): this {
+    this.openIdConfiguration = config;
+    return this;
+  }
+
+  getDiscoveryUrl(): string {
+    return this.discoveryUrl;
+  }
+
+  getJwksEndpoint(): string {
+    return this.jwksEndpoint;
+  }
+
+  getOpenIdConfiguration(): Record<string, string | string[] | undefined> | undefined {
+    return this.openIdConfiguration;
   }
 
   setAuthorizationEndpoint(url: string): this {
@@ -60,7 +103,7 @@ export class AuthorizationCodeFlowBuilder<
   generateAccessToken(
     handler: OAuth2GenerateAccessTokenFunction<
       AuthorizationCodeGrantContext,
-      AuthorizationCodeAccessTokenResult | string
+      OIDCAuthorizationCodeAccessTokenResult
     >,
   ): this {
     this.model.generateAccessToken = handler;
@@ -69,7 +112,7 @@ export class AuthorizationCodeFlowBuilder<
 
   generateAccessTokenFromRefreshToken(
     handler: OAuth2GenerateAccessTokenFromRefreshTokenFunction<
-      AuthorizationCodeAccessTokenResult | string
+      AuthorizationCodeAccessTokenResult
     >,
   ): this {
     this.model.generateAccessTokenFromRefreshToken = handler;
@@ -77,7 +120,9 @@ export class AuthorizationCodeFlowBuilder<
   }
 
   generateAuthorizationCode(
-    handler: GenerateAuthorizationCodeFunction<AuthorizationCodeEndpointContext>,
+    handler: GenerateAuthorizationCodeFunction<
+      OIDCAuthorizationCodeEndpointContext
+    >,
   ): this {
     this.model.generateAuthorizationCode = handler;
     return this;
@@ -91,7 +136,7 @@ export class AuthorizationCodeFlowBuilder<
   }
 
   getClientForAuthentication(
-    handler: OAuth2GetClientFunction<AuthorizationCodeEndpointRequest>,
+    handler: OAuth2GetClientFunction<OIDCAuthorizationCodeEndpointRequest>,
   ): this {
     this.model.getClientForAuthentication = handler;
     return this;
@@ -99,7 +144,7 @@ export class AuthorizationCodeFlowBuilder<
 
   getUserForAuthentication(
     handler: GetUserForAuthenticationFunction<
-      AuthorizationCodeEndpointContext,
+      OIDCAuthorizationCodeEndpointContext,
       AuthReqData
     >,
   ): this {
@@ -107,15 +152,18 @@ export class AuthorizationCodeFlowBuilder<
     return this;
   }
 
-  protected override buildParams(): AuthorizationCodeFlowOptions<AuthReqData> {
+  protected override buildParams(): OIDCAuthorizationCodeFlowOptions<AuthReqData> {
     return {
       ...super.buildParams(),
       model: this.model,
       authorizationEndpoint: this.authorizationEndpoint,
+      discoveryUrl: this.discoveryUrl,
+      jwksEndpoint: this.jwksEndpoint,
+      openIdConfiguration: this.openIdConfiguration,
     };
   }
 
-  override build(): AuthorizationCodeFlow<AuthReqData> {
-    return new AuthorizationCodeFlow<AuthReqData>(this.buildParams());
+  override build(): OIDCAuthorizationCodeFlow<AuthReqData> {
+    return new OIDCAuthorizationCodeFlow<AuthReqData>(this.buildParams());
   }
 }

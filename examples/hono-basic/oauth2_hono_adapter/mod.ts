@@ -19,9 +19,15 @@ export { createAuthMiddleware } from "./utils.ts";
 
 export {
   HonoAuthorizationCodeFlow,
+  HonoAuthorizationCodeFlowBuilder,
+  type HonoAuthorizationCodeFlowBuilderOptions,
   type HonoAuthorizationCodeFlowOptions,
+  type HonoAuthorizationCodeMethods,
   HonoOIDCAuthorizationCodeFlow,
+  HonoOIDCAuthorizationCodeFlowBuilder,
+  type HonoOIDCAuthorizationCodeFlowBuilderOptions,
   type HonoOIDCAuthorizationCodeFlowOptions,
+  type HonoOIDCAuthorizationCodeMethods,
 } from "./authorization_code.ts";
 export {
   HonoClientCredentialsFlow,

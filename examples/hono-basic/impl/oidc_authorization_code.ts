@@ -2,14 +2,15 @@
 
 import { StrategyInternalError } from "@saurbit/oauth2-server";
 
-import { BearerTokenType, HonoOIDCAuthorizationCodeFlow } from "../oauth2_hono_adapter/mod.ts";
+import {
+  BearerTokenType,
+  HonoOIDCAuthorizationCodeFlowBuilder,
+} from "../oauth2_hono_adapter/mod.ts";
 import { HTTPException } from "hono/http-exception";
 import { html } from "hono/html";
 import { HTTPRateLimitException, verifyTokenFunction } from "./common.ts";
 
-export const oidcAuthorizationCodeFlow = new HonoOIDCAuthorizationCodeFlow({
-  discoveryUrl: "http://localhost:3000/.well-known/openid-configuration",
-  jwksEndpoint: "/jwks",
+export const oidcAuthorizationCodeFlow = HonoOIDCAuthorizationCodeFlowBuilder.create({
   parseAuthorizationEndpointData: async (context) => {
     const formData = await context.req.formData();
     const username = formData.get("username");
@@ -23,151 +24,146 @@ export const oidcAuthorizationCodeFlow = new HonoOIDCAuthorizationCodeFlow({
       password: typeof password === "string" ? password : "",
     };
   },
-  model: {
-    // -- at authorization endpoint
+})
+  .setSecuritySchemeName("hono-oidc-auth-code")
+  .setDescription("Authorization Code Grant Flow for Hono API")
+  .setScopes({
+    "content:read": "Read content",
+    "content:write": "Write content",
+    admin: "Admin access",
+  })
+  .setDiscoveryUrl("/.well-known/openid-configuration")
+  .setJwksEndpoint("/jwks")
+  .setTokenEndpoint("/token") // Set the token URL for the OpenAPI documentation
+  .setAuthorizationEndpoint("/authorize") // Set the authorization URL for the OpenAPI documentation
+  .clientSecretBasicAuthenticationMethod()
+  .clientSecretPostAuthenticationMethod()
+  .setAccessTokenLifetime(3600)
+  .setTokenType(new BearerTokenType())
+  // -- handlers at authorization endpoint
 
-    getClientForAuthentication: async ({
+  .getClientForAuthentication(async ({
+    clientId,
+    redirectUri,
+    responseType: _rt,
+    codeChallenge: _cc,
+    state: _s,
+    scope: _scope,
+    nonce: _n,
+    prompt: _p,
+  }) => {
+    console.log("getClientForAuthentication called with:", {
       clientId,
       redirectUri,
+      responseType: _rt,
+      codeChallenge: _cc,
+      state: _s,
+      scopes: _scope,
+    });
+    if (clientId === "my-client") {
+      return await Promise.resolve({
+        id: "my-client",
+        redirectUris: ["http://localhost:3000/callback"],
+        grants: ["authorization_code"],
+        scopes: ["openid", "content:read", "content:write"],
+      });
+    }
+  })
+  .getUserForAuthentication(async (
+    {
+      client: _c,
+      redirectUri: _r,
       responseType: _rt,
       codeChallenge: _cc,
       state: _s,
       scope: _scope,
       nonce: _n,
       prompt: _p,
-    }) => {
-      console.log("getClientForAuthentication called with:", {
-        clientId,
-        redirectUri,
-        responseType: _rt,
-        codeChallenge: _cc,
-        state: _s,
-        scopes: _scope,
-      });
-      if (clientId === "my-client") {
-        return await Promise.resolve({
-          id: "my-client",
-          redirectUris: ["http://localhost:3000/callback"],
-          grants: ["authorization_code"],
-          scopes: ["openid", "content:read", "content:write"],
-        });
-      }
     },
-
-    getUserForAuthentication: async (
-      {
-        client: _c,
-        redirectUri: _r,
-        responseType: _rt,
-        codeChallenge: _cc,
-        state: _s,
-        scope: _scope,
-        nonce: _n,
-        prompt: _p,
-      },
-      { username, password },
-    ) => {
-      console.log("getUserForAuthentication called with:", {
-        client: _c,
-        redirectUri: _r,
-        responseType: _rt,
-        codeChallenge: _cc,
-        state: _s,
-        scopes: _scope,
-        username,
-        password,
-      });
-      // In a real implementation, you would authenticate the user here based on the request data (e.g. form data, headers, etc.)
-      // For this example, we'll just return a dummy user object
-      if (username === "user" && password === "crossterm") {
-        return await Promise.resolve({
-          type: "authenticated",
-          user: {
-            username: "user",
-            level: 1,
-          },
-        });
-      }
-
-      if (username === "noconsent" && password === "crossterm") {
-        return await Promise.resolve({
-          type: "authenticated",
-          user: {
-            username: "noconsent",
-            level: 2,
-          },
-        });
-      }
-    },
-
-    generateAuthorizationCode: async ({
+    { username, password },
+  ) => {
+    console.log("getUserForAuthentication called with:", {
       client: _c,
       redirectUri: _r,
       responseType: _rt,
       codeChallenge: _cc,
-      scope,
       state: _s,
-      nonce: _n,
-      prompt: _p,
-    }, user) => {
-      console.log("generateAuthorizationCode called with:", {
-        client: _c,
-        redirectUri: _r,
-        scope,
-        user,
-      });
-
-      if (user?.username === "noconsent") {
-        return {
-          type: "deny",
-          message: "User did not consent to the authorization request",
-        };
-      }
-
-      // In a real implementation, you would generate a secure code here and associate it with the client, redirect URI, scope, and user
+      scopes: _scope,
+      username,
+      password,
+    });
+    // In a real implementation, you would authenticate the user here based on the request data (e.g. form data, headers, etc.)
+    // For this example, we'll just return a dummy user object
+    if (username === "user" && password === "crossterm") {
       return await Promise.resolve({
-        type: "code",
-        code: "authcode-" + scope.join(","),
+        type: "authenticated",
+        user: {
+          username: "user",
+          level: 1,
+        },
       });
-    },
+    }
 
-    // -- at token endpoint
+    if (username === "noconsent" && password === "crossterm") {
+      return await Promise.resolve({
+        type: "authenticated",
+        user: {
+          username: "noconsent",
+          level: 2,
+        },
+      });
+    }
+  })
+  .generateAuthorizationCode(async ({
+    client: _c,
+    redirectUri: _r,
+    responseType: _rt,
+    codeChallenge: _cc,
+    scope,
+    state: _s,
+    nonce: _n,
+    prompt: _p,
+  }, user) => {
+    console.log("generateAuthorizationCode called with:", {
+      client: _c,
+      redirectUri: _r,
+      scope,
+      user,
+    });
 
-    getClient: async ({ clientId, clientSecret: _c, ...props }) => {
-      console.log("getClient called with:", { clientId, grantType: props.grantType });
-      if (props.grantType === "refresh_token") {
-        // For refresh token request, you would typically validate the refresh token and return the associated client information. For this example, we'll just return a dummy client object if the clientId matches.
-        if (clientId === "my-client" && props.refreshToken.startsWith("valid-refresh-token-")) {
-          // If asking for new scope, it cannot have scopes that are not
-          // in the original scope associated with the refresh token
+    if (user?.username === "noconsent") {
+      return {
+        type: "deny",
+        message: "User did not consent to the authorization request",
+      };
+    }
 
-          const scope = props.refreshToken.slice("valid-refresh-token-".length).split(",");
-          const invalidScopes = props.scope?.filter((scope) => !scope.includes(scope));
-          if (invalidScopes && invalidScopes.length > 0) {
-            console.log("Invalid scopes in refresh token request:", {
-              requestedScopes: props.scope,
-              validScopes: scope,
-            });
-            return; // Return if there are invalid scopes in the request
-          }
+    // In a real implementation, you would generate a secure code here and associate it with the client, redirect URI, scope, and user
+    return await Promise.resolve({
+      type: "code",
+      code: "authcode-" + scope.join(","),
+    });
+  })
+  // -- handlers at token endpoint
 
-          return await Promise.resolve({
-            id: "my-client",
-            redirectUris: ["http://localhost/callback"],
-            grants: ["authorization_code"],
-            scopes: ["openid", "content:read", "content:write"],
-            metadata: {
-              // You can include any additional metadata here that you want
-              // to be available in the grant context for generating the access token
-              newScope: props.scope || scope,
-              exampleMetadata: "exampleValue",
-            },
+  .getClient(async ({ clientId, clientSecret: _c, ...props }) => {
+    console.log("getClient called with:", { clientId, grantType: props.grantType });
+    if (props.grantType === "refresh_token") {
+      // For refresh token request, you would typically validate the refresh token and return the associated client information. For this example, we'll just return a dummy client object if the clientId matches.
+      if (clientId === "my-client" && props.refreshToken.startsWith("valid-refresh-token-")) {
+        // If asking for new scope, it cannot have scopes that are not
+        // in the original scope associated with the refresh token
+
+        const scope = props.refreshToken.slice("valid-refresh-token-".length).split(",");
+        const invalidScopes = props.scope?.filter((scope) => !scope.includes(scope));
+        if (invalidScopes && invalidScopes.length > 0) {
+          console.log("Invalid scopes in refresh token request:", {
+            requestedScopes: props.scope,
+            validScopes: scope,
           });
+          return; // Return if there are invalid scopes in the request
         }
-        return; // Return if the client is not found or the refresh token is invalid
-      }
-      if (clientId === "my-client" && props.code.startsWith("authcode-")) {
-        const scope = props.code.slice("authcode-".length).split(",");
+
         return await Promise.resolve({
           id: "my-client",
           redirectUris: ["http://localhost/callback"],
@@ -176,93 +172,89 @@ export const oidcAuthorizationCodeFlow = new HonoOIDCAuthorizationCodeFlow({
           metadata: {
             // You can include any additional metadata here that you want
             // to be available in the grant context for generating the access token
-            newScope: scope,
+            newScope: props.scope || scope,
             exampleMetadata: "exampleValue",
           },
         });
       }
-    },
-    generateAccessToken: ({
-      accessTokenLifetime: _a,
+      return; // Return if the client is not found or the refresh token is invalid
+    }
+    if (clientId === "my-client" && props.code.startsWith("authcode-")) {
+      const scope = props.code.slice("authcode-".length).split(",");
+      return await Promise.resolve({
+        id: "my-client",
+        redirectUris: ["http://localhost/callback"],
+        grants: ["authorization_code"],
+        scopes: ["openid", "content:read", "content:write"],
+        metadata: {
+          // You can include any additional metadata here that you want
+          // to be available in the grant context for generating the access token
+          newScope: scope,
+          exampleMetadata: "exampleValue",
+        },
+      });
+    }
+  })
+  .generateAccessToken(({
+    accessTokenLifetime: _a,
+    client,
+    grantType: _g,
+    tokenType: _t,
+    code,
+    redirectUri: _r,
+    codeVerifier: _cv,
+  }) => {
+    console.log("generateAccessToken called with:", {
       client,
       grantType: _g,
       tokenType: _t,
-      code,
-      redirectUri: _r,
-      codeVerifier: _cv,
-    }) => {
-      console.log("generateAccessToken called with:", {
-        client,
-        grantType: _g,
-        tokenType: _t,
-      });
-      // In a real implementation, you would generate a secure token here
-      if (code.startsWith("authcode-") && Array.isArray(client.metadata?.newScope)) {
-        return {
-          accessToken: "admin-" + client.metadata?.newScope.join(","),
-          scope: client.metadata?.newScope,
-          refreshToken: "valid-refresh-token-" + client.metadata?.newScope.join(","),
-          idToken: '{"sub":"1234567890","name":"John Doe","admin":true}', // Example ID token payload
-        };
-      }
-    },
-    generateAccessTokenFromRefreshToken: (context) => {
-      console.log("generateAccessTokenFromRefreshToken called with:", {
-        client: context.client,
-        grantType: context.grantType,
-        tokenType: context.tokenType,
-      });
-      // In a real implementation, you would generate a secure token here
-      if (
-        context.refreshToken.startsWith("valid-refresh-token-") &&
-        Array.isArray(context.client.metadata?.newScope)
-      ) {
-        return {
-          accessToken: "admin-" + context.refreshToken.slice("valid-refresh-token-".length),
-          scope: context.client.metadata?.newScope,
-        };
-      }
-    },
-  },
-  strategyOptions: {
-    failedAuthorizationAction: (_, error) => {
-      // You can perform additional actions here, such as logging or modifying the response
-      console.log("Authorization failed:", {
-        error: error.name,
-        message: error.message,
-      });
-      let message: string;
-      if (Deno.env.get("DENO_ENV") === "production") {
-        message = error instanceof StrategyInternalError ? "Internal Server Error" : "Unauthorized";
-      } else {
-        message = "Unauthorized";
-      }
-      throw new HTTPException(401, {
-        message,
-      });
-    },
-    verifyToken: verifyTokenFunction,
-  },
-  accessTokenLifetime: 3600,
-  securitySchemeName: "honoAuthorizationCode",
-  // Set the token type to Bearer
-  tokenType: new BearerTokenType(),
-  clientAuthenticationMethods: [
-    "client_secret_basic",
-    "client_secret_post",
-  ],
-});
-
-// Set the description and scopes for the OpenAPI documentation
-oidcAuthorizationCodeFlow
-  .setDescription("Authorization Code Grant Flow for Hono API")
-  .setScopes({
-    "content:read": "Read content",
-    "content:write": "Write content",
-    admin: "Admin access",
+    });
+    // In a real implementation, you would generate a secure token here
+    if (code.startsWith("authcode-") && Array.isArray(client.metadata?.newScope)) {
+      return {
+        accessToken: "admin-" + client.metadata?.newScope.join(","),
+        scope: client.metadata?.newScope,
+        refreshToken: "valid-refresh-token-" + client.metadata?.newScope.join(","),
+        idToken: '{"sub":"1234567890","name":"John Doe","admin":true}', // Example ID token payload
+      };
+    }
   })
-  .setTokenEndpoint("/token") // Set the token URL for the OpenAPI documentation
-  .setAuthorizationEndpoint("/authorize"); // Set the authorization URL for the OpenAPI documentation
+  .generateAccessTokenFromRefreshToken((context) => {
+    console.log("generateAccessTokenFromRefreshToken called with:", {
+      client: context.client,
+      grantType: context.grantType,
+      tokenType: context.tokenType,
+    });
+    // In a real implementation, you would generate a secure token here
+    if (
+      context.refreshToken.startsWith("valid-refresh-token-") &&
+      Array.isArray(context.client.metadata?.newScope)
+    ) {
+      return {
+        accessToken: "admin-" + context.refreshToken.slice("valid-refresh-token-".length),
+        scope: context.client.metadata?.newScope,
+      };
+    }
+  })
+  // -- handlers for token verification and failed authorization
+
+  .verifyTokenHandler(verifyTokenFunction)
+  .failedAuthorizationAction((_, error) => {
+    // You can perform additional actions here, such as logging or modifying the response
+    console.log("Authorization failed:", {
+      error: error.name,
+      message: error.message,
+    });
+    let message: string;
+    if (Deno.env.get("DENO_ENV") === "production") {
+      message = error instanceof StrategyInternalError ? "Internal Server Error" : "Unauthorized";
+    } else {
+      message = "Unauthorized";
+    }
+    throw new HTTPException(401, {
+      message,
+    });
+  }).build();
 
 export const HtmlFormContent = (props: {
   errorMessage?: string;

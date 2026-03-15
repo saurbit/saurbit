@@ -47,6 +47,12 @@ export class OIDCClientCredentialsFlow extends AbstractClientCredentialsFlow imp
     };
   }
 
+  /**
+   * Retrieves the OpenID Connect discovery configuration.
+   * @param req - Optional request object to help determine the full URL for relative endpoints in the discovery document. If not provided, relative endpoints will be resolved against the discovery URL's origin.
+   * @returns The OpenID Connect discovery configuration.
+   * @link https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
+   */
   getDiscoveryConfiguration(req?: Request) {
     const supported = this.getTokenEndpointAuthMethods();
     const scopes = this.getScopes() || {};
