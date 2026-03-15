@@ -13,53 +13,49 @@ implementation for [Deno](https://deno.land/).
 
 ## Quick Start
 
-```ts
-import { ClientCredentialsFlow } from "@saurbit/oauth2-server";
+### 1. Create a flow
 
-const flow = new ClientCredentialsFlow({
-  model: {
-    // implement the model interface for your storage layer
-  },
-  strategyOptions: {
-    // implement the strategy options for your authentication strategy
-  },
-  // other options
-});
-
-const openAPISecurityScheme = flow.toOpenAPISecurityScheme();
-```
-
-### Use with a web framework
-
-The library is designed to be framework-agnostic, so you can use it with any web framework by
-implementing the necessary HTTP handling and model interface. For example, with
-[Oak](https://deno.land/x/oak):
+Use `ClientCredentialsFlowBuilder` (or its counterparts for other grant types) to configure a flow
+with your client lookup and token generation logic:
 
 ```ts
-import { Application, Router } from "@oak/oak";
 import { ClientCredentialsFlowBuilder } from "@saurbit/oauth2-server";
 
 const flow = new ClientCredentialsFlowBuilder({
   securitySchemeName: "clientCredentials",
 })
   .getClient((tokenRequest) => {
-    // Implement logic to retrieve and validate the client.
+    // Look up the client by ID/secret and return it, or undefined if not found.
     return undefined;
   })
   .generateAccessToken((grantContext) => {
-    // Implement logic to generate an access token.
+    // Generate and return an access token string for the authenticated client.
     return undefined;
   })
   .clientSecretBasicAuthenticationMethod()
   .build();
+```
+
+### 2. Wire it into your HTTP framework
+
+The flow's `token()` method accepts a web-standard
+[`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request) and returns a typed result
+object, no framework-specific dependencies. Below is an example using [Oak](https://jsr.io/@oak/oak):
+
+> **Note:** Oak's `ctx.request` is its own wrapper class, not a web-standard `Request`. Use
+> `ctx.request.source` to get the underlying native request.
+
+```ts
+import { Application, Router } from "@oak/oak";
 
 const router = new Router();
 
 router.post("/token", async (ctx) => {
   try {
     const result = await flow.token(ctx.request.source as Request);
+
     if (!result.success) {
-      ctx.response.status = result.error.statusCode || 400;
+      ctx.response.status = result.error.statusCode ?? 400;
       ctx.response.body = {
         error: result.error.errorCode,
         error_description: result.error.message,
@@ -78,6 +74,12 @@ const app = new Application();
 app.use(router.routes());
 app.use(router.allowedMethods());
 app.listen({ port: 8000 });
+```
+
+### 3. Generate an OpenAPI security scheme (optional)
+
+```ts
+const securityScheme = flow.toOpenAPISecurityScheme();
 ```
 
 ## License
