@@ -428,9 +428,9 @@ export abstract class AbstractAuthorizationCodeFlow<
     reqData: AuthReqData,
   ): Promise<AuthorizationCodeProcessResponse> {
     // Do not check as this method could be tried
-    // if user is already authenticated but tries to access 
-    // the authorization endpoint again to get a new code with the same session 
-    // (e.g. to get a new code with a different scope, or 
+    // if user is already authenticated but tries to access
+    // the authorization endpoint again to get a new code with the same session
+    // (e.g. to get a new code with a different scope, or
     // to get a new code after the previous one is expired but the user is still authenticated)
     /*
     if (request.method !== "POST") {
