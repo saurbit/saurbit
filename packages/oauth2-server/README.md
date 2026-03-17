@@ -112,6 +112,10 @@ router.get("/protected", async (ctx, next) => {
 const securityScheme = flow.toOpenAPISecurityScheme();
 ```
 
+Returns an object keyed by the security scheme name (default: `"oauth2-flow"`), with the flow type,
+scopes, and token URL. Customise via constructor options or builder methods:
+`setSecuritySchemeName`, `setDescription`, `setScopes`, `setTokenEndpoint`.
+
 ## License
 
 [MIT](../../LICENSE)

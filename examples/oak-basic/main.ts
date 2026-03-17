@@ -4,10 +4,8 @@ import { ClientCredentialsFlowBuilder } from "@saurbit/oauth2-server";
 const flow = new ClientCredentialsFlowBuilder({
   securitySchemeName: "clientCredentials",
 })
-  .setSecuritySchemeName("customClientCredentials")
-  .setDescription("Client Credentials Flow for OAuth2")
-  .setScopes({ "read:data": "Read access to data", "write:data": "Write access to data" })
   .setTokenEndpoint("/token")
+  .clientSecretBasicAuthenticationMethod()
   .getClient((tokenRequest) => {
     // Implement logic to retrieve and validate the client.
     if (
@@ -21,11 +19,13 @@ const flow = new ClientCredentialsFlowBuilder({
     // Implement logic to generate an access token.
     return "valid-token";
   })
-  .clientSecretBasicAuthenticationMethod()
   .verifyToken((_req, { token }) => {
     // Implement logic to verify the access token.
     if (token === "valid-token") {
-      return { isValid: true, credentials: { app: { clientId: "example-client" } } };
+      return {
+        isValid: true,
+        credentials: { app: { clientId: "example-client", name: "Example Client" } },
+      };
     }
     return { isValid: false };
   })
