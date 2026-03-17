@@ -4,15 +4,31 @@ import { ClientCredentialsFlowBuilder } from "@saurbit/oauth2-server";
 const flow = new ClientCredentialsFlowBuilder({
   securitySchemeName: "clientCredentials",
 })
-  .getClient((_tokenRequest) => {
+  .setSecuritySchemeName("customClientCredentials")
+  .setDescription("Client Credentials Flow for OAuth2")
+  .setScopes({ "read:data": "Read access to data", "write:data": "Write access to data" })
+  .setTokenEndpoint("/token")
+  .getClient((tokenRequest) => {
     // Implement logic to retrieve and validate the client.
+    if (
+      tokenRequest.clientId === "example-client" && tokenRequest.clientSecret === "example-secret"
+    ) {
+      return { id: "example-client", grants: [tokenRequest.grantType], redirectUris: [] };
+    }
     return undefined;
   })
   .generateAccessToken((_grantContext) => {
     // Implement logic to generate an access token.
-    return undefined;
+    return "valid-token";
   })
   .clientSecretBasicAuthenticationMethod()
+  .verifyToken((_req, { token }) => {
+    // Implement logic to verify the access token.
+    if (token === "valid-token") {
+      return { isValid: true, credentials: { app: { clientId: "example-client" } } };
+    }
+    return { isValid: false };
+  })
   .build();
 
 const router = new Router();
@@ -38,6 +54,23 @@ router.post("/token", async (ctx) => {
     ctx.response.status = 500;
     ctx.response.body = { error: "Internal Server Error" };
   }
+});
+
+router.get("/protected", async (ctx, next) => {
+  const result = await flow.verifyToken(ctx.request.source as Request);
+  if (!result.success) {
+    ctx.response.status = 401;
+    ctx.response.body = { error: "Unauthorized" };
+  } else {
+    ctx.state.client = result.credentials.app;
+    await next();
+  }
+}, (ctx) => {
+  ctx.response.body = { message: "This is a protected resource.", client: ctx.state.client };
+});
+
+router.get("/openapi.json", (ctx) => {
+  ctx.response.body = flow.toOpenAPISecurityScheme();
 });
 
 const app = new Application();

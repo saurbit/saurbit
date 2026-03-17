@@ -24,6 +24,7 @@ import { ClientCredentialsFlowBuilder } from "@saurbit/oauth2-server";
 const flow = new ClientCredentialsFlowBuilder({
   securitySchemeName: "clientCredentials",
 })
+  .clientSecretBasicAuthenticationMethod()
   .getClient((tokenRequest) => {
     // Look up the client by ID/secret and return it, or undefined if not found.
     return undefined;
@@ -32,7 +33,13 @@ const flow = new ClientCredentialsFlowBuilder({
     // Generate and return an access token string for the authenticated client.
     return undefined;
   })
-  .clientSecretBasicAuthenticationMethod()
+  .verifyToken((request, { token }) => {
+    // Implement logic to verify the access token.
+    if (token === "valid-token") {
+      return { isValid: true, credentials: { app: { clientId: "example-client" } } };
+    }
+    return { isValid: false };
+  })
   .build();
 ```
 
@@ -40,7 +47,8 @@ const flow = new ClientCredentialsFlowBuilder({
 
 The flow's `token()` method accepts a web-standard
 [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request) and returns a typed result
-object, no framework-specific dependencies. Below is an example using [Oak](https://jsr.io/@oak/oak):
+object, no framework-specific dependencies. Below is an example using
+[Oak](https://jsr.io/@oak/oak):
 
 > **Note:** Oak's `ctx.request` is its own wrapper class, not a web-standard `Request`. Use
 > `ctx.request.source` to get the underlying native request.
@@ -76,7 +84,29 @@ app.use(router.allowedMethods());
 app.listen({ port: 8000 });
 ```
 
-### 3. Generate an OpenAPI security scheme (optional)
+### 3. Access protected resources
+
+Use the flow's `verifyToken()` method on protected endpoints. It extracts the token from the request
+and delegates to the `verifyToken` handler you registered in the builder (step 1), returning its
+result:
+
+```ts
+router.get("/protected", async (ctx, next) => {
+  const result = await flow.verifyToken(ctx.request.source as Request);
+  if (!result.success) {
+    ctx.response.status = 401;
+    ctx.response.body = { error: "Unauthorized" };
+  } else {
+    // Access token is valid, and the token info is available in result.credentials.
+    ctx.state.client = result.credentials.app;
+    await next();
+  }
+}, (ctx) => {
+  ctx.response.body = { message: "This is a protected resource.", client: ctx.state.client };
+});
+```
+
+### 4. Generate an OpenAPI security scheme (optional)
 
 ```ts
 const securityScheme = flow.toOpenAPISecurityScheme();
