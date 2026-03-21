@@ -1,11 +1,21 @@
-import { OAuth2Error, ServerError } from "../errors.ts";
-import { OAuth2Client } from "../types.ts";
+import {
+  InvalidClientError,
+  InvalidRequestError,
+  OAuth2Error,
+  ServerError,
+  UnauthorizedClientError,
+  UnsupportedGrantTypeError,
+} from "../errors.ts";
+import { TokenTypeValidationResponse } from "../token_types/types.ts";
+import { OAuth2Client, OAuth2TokenResponseBody } from "../types.ts";
 import {
   OAuth2AccessTokenResult,
   OAuth2Flow,
   OAuth2FlowOptions,
+  OAuth2FlowTokenResponse,
   OAuth2GetClientFunction,
   OAuth2GrantModel,
+  OAuth2RefreshTokenGrantContext,
   OAuth2RefreshTokenRequest,
 } from "./flow.ts";
 
@@ -27,7 +37,6 @@ export interface DeviceAuthorizationGrantContext {
   grantType: "urn:ietf:params:oauth:grant-type:device_code";
   tokenType: string;
   accessTokenLifetime: number;
-  interval: number;
   deviceCode: string;
 }
 
@@ -44,10 +53,6 @@ export interface DeviceAuthorizationTokenRequest {
 export interface DeviceAuthorizationEndpointContext {
   client: OAuth2Client;
   scope: string[];
-  tokenType: string;
-  accessTokenLifetime: number;
-  interval: number;
-  verificationEndpoint: string; // verificationUri
 }
 
 /**
@@ -66,10 +71,25 @@ export interface DeviceAuthorizationEndpointCodeResponse<
   user: DeviceAuthorizationUser;
   deviceCode: string;
   userCode: string;
+  verificationEndpoint: string; // verificationUri
   verificationEndpointComplete: string; // verificationUriComplete
   error?: never;
   [key: string]: unknown;
 }
+
+export type DeviceAuthorizationEndpointResponse<
+  C extends DeviceAuthorizationEndpointContext = DeviceAuthorizationEndpointContext,
+> =
+  | {
+    method: "POST";
+    type: "device_code";
+    deviceCodeResponse: DeviceAuthorizationEndpointCodeResponse<C>;
+  }
+  | {
+    type: "error";
+    error: OAuth2Error;
+    client?: OAuth2Client;
+  };
 
 export type DeviceAuthorizationProcessResponse<
   C extends DeviceAuthorizationEndpointContext = DeviceAuthorizationEndpointContext,
@@ -105,17 +125,26 @@ export interface GenerateDeviceCodeFunction<
   (
     context: TContext,
   ):
-    | Promise<{
+    | Promise<
+      {
         deviceCode: string;
         userCode: string;
-        user: DeviceAuthorizationUser
-    } | undefined>
+        user: DeviceAuthorizationUser;
+      } | undefined
+    >
     | {
-        deviceCode: string;
-        userCode: string;
-        user: DeviceAuthorizationUser
-    } | undefined;
+      deviceCode: string;
+      userCode: string;
+      user: DeviceAuthorizationUser;
+    }
+    | undefined;
 }
+
+export type DeviceAuthorizationInitiationResponse<
+  C extends DeviceAuthorizationEndpointContext = DeviceAuthorizationEndpointContext,
+> =
+  | { success: true; context: C }
+  | { success: false; error: OAuth2Error };
 
 /**
  * Model interface that must be implemented by the consuming application
@@ -154,8 +183,11 @@ export interface DeviceAuthorizationModel extends
   >;
   */
 
-  verifyUserCode: (userCode: string) => 
-    | Promise<{ /*success: true;*/ deviceCode: string; /*userCode: string,*/ client: OAuth2Client } | undefined>
+  verifyUserCode: (userCode: string) =>
+    | Promise<
+      | { /*success: true;*/ deviceCode: string; /*userCode: string,*/ client: OAuth2Client }
+      | undefined
+    >
     | { /*success: true;*/ deviceCode: string; /*userCode: string,*/ client: OAuth2Client }
     | undefined;
 
@@ -171,8 +203,8 @@ export interface DeviceAuthorizationFlowOptions extends OAuth2FlowOptions {
   verificationEndpoint?: string;
 }
 
-/*
-export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow implements DeviceAuthorizationGrant {
+export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
+  implements DeviceAuthorizationGrant {
   readonly grantType = "urn:ietf:params:oauth:grant-type:device_code" as const;
   protected readonly model: DeviceAuthorizationModel;
 
@@ -209,65 +241,59 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
     return this.verificationEndpoint;
   }
 
-  protected async getAuthorizationCodeEndpointContext(
+  protected async getDeviceAuthorizationEndpointContext(
     request: Request,
-  ): Promise<AuthorizationCodeInitiationResponse> {
-    const query = new URL(request.url).searchParams;
-    const clientId = query.get("client_id") || undefined;
-    const responseType = query.get("response_type") || undefined;
-    const redirectUri = query.get("redirect_uri") || undefined;
-    const scope = query.get("scope") || undefined;
-    const state = query.get("state") || undefined;
-    const codeChallenge = query.get("code_challenge") || undefined;
-    const tmpCodeChallengeMethod = query.get("code_challenge_method");
-    const codeChallengeMethod: "S256" | "plain" | undefined = tmpCodeChallengeMethod === "S256"
-      ? "S256"
-      : tmpCodeChallengeMethod === "plain"
-      ? "plain"
-      : codeChallenge
-      ? "plain" // RFC 7636 §4.3 default
-      : undefined;
+  ): Promise<DeviceAuthorizationInitiationResponse> {
+    const req = request.clone();
+
+    // Validate client authentication credentials using the registered client authentication methods
+    const { clientId, clientSecret } = await this
+      .extractClientCredentials(
+        request.clone(),
+        this.clientAuthMethods,
+        this.getTokenEndpointAuthMethods(),
+      );
 
     if (!clientId) {
       return {
         success: false,
         error: new InvalidRequestError("Missing client_id parameter"),
-        redirectable: false,
       };
     }
 
-    if (responseType !== "code") {
-      return {
-        success: false,
-        error: new UnsupportedResponseTypeError("Unsupported response type"),
-        redirectable: false,
+    let body: unknown;
+    const contentType = req.headers.get("content-type") || "";
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      const form = await req.formData();
+      body = {
+        scope: form.get("scope"),
       };
+    } else if (contentType.includes("application/json")) {
+      body = req.json ? await req.json() : null;
+    } else {
+      body = null;
     }
 
-    if (!redirectUri) {
-      return {
-        success: false,
-        error: new InvalidRequestError("Missing redirect_uri parameter"),
-        redirectable: false,
-      };
-    }
+    let scope: string | undefined;
 
-    // In a real implementation, you would validate the client_id and redirect_uri here,
-    // and then generate an authorization code and redirect the user to the redirect_uri with the code and state as query parameters.
+    if (body && typeof body === "object") {
+      if ("scope" in body && typeof body.scope === "string") {
+        scope = body.scope;
+      }
+    }
 
     const client = await this.model.getClientForAuthentication({
       clientId,
+      clientSecret,
       scope: scope ? scope.split(" ") : undefined,
-      clientSecret
     });
 
     if (!client) {
       return {
         success: false,
         error: new InvalidRequestError(
-          "Invalid client_id or redirect_uri or scope",
+          "Invalid client_id or scope",
         ),
-        redirectable: false,
       };
     }
 
@@ -285,22 +311,15 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
       success: true,
       context: {
         client,
-        responseType,
-        redirectUri,
         scope: validatedScopes,
-        state,
-        codeChallenge,
-        codeChallengeMethod,
       },
     };
   }
 
-
   async processAuthorization(
     request: Request,
   ): Promise<DeviceAuthorizationProcessResponse> {
-
-    const context = await this.getAuthorizationCodeEndpointContext(request);
+    const context = await this.getDeviceAuthorizationEndpointContext(request);
 
     if (!context.success) {
       return {
@@ -313,7 +332,6 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
       client,
       scope,
     } = context.context;
-
 
     const codeResult = await this.model.generateDeviceCode(
       {
@@ -338,41 +356,19 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
         user: codeResult.user,
         deviceCode: codeResult.deviceCode,
         userCode: codeResult.userCode, // In a real implementation, you would generate a separate user code that is easier for the user to input, and associate it with the device code in your data store.
-        verificationEndpointComplete: `${this.verificationEndpoint}?user_code=${encodeURIComponent(codeResult.userCode)}&client_id=${encodeURIComponent(client.clientId)}`,
+        verificationEndpoint: this.verificationEndpoint,
+        verificationEndpointComplete: `${this.verificationEndpoint}?user_code=${
+          encodeURIComponent(codeResult.userCode)
+        }}`,
       },
     };
   }
 
   async handleAuthorizationEndpoint(
     request: Request,
-    reqData: AuthReqData,
-  ): Promise<AuthorizationCodeEndpointResponse> {
-    if (request.method === "GET") {
-      // In a real implementation, you would render a login page
-      // or consent page here for the user
-      // to authenticate and authorize the client.
-      const result = await this.initiateAuthorization(request);
-
-      if (!result.success) {
-        return {
-          ...result,
-          type: "error",
-        };
-      }
-
-      return {
-        ...result,
-        type: "initiated",
-        method: "GET",
-      };
-    }
-
+  ): Promise<DeviceAuthorizationEndpointResponse> {
     if (request.method === "POST") {
-      // In a real implementation, you would authenticate the user here,
-      // and if authentication is successful, generate an authorization code,
-      // and redirect the user to the redirect_uri with the code and state as query parameters.
-
-      const result = await this.processAuthorization(request, reqData);
+      const result = await this.processAuthorization(request);
 
       if (result.type === "error") {
         return result;
@@ -387,14 +383,13 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
     return {
       type: "error",
       error: new InvalidRequestError("Unsupported HTTP method"),
-      redirectable: false,
     };
   }
 
   async initiateToken(request: Request): Promise<
     | {
       success: true;
-      context: AuthorizationCodeGrantContext | OAuth2RefreshTokenGrantContext;
+      context: DeviceAuthorizationGrantContext | OAuth2RefreshTokenGrantContext;
     }
     | { success: false; error: OAuth2Error }
   > {
@@ -408,9 +403,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
 
     let body: unknown;
     let grantTypeInBody: string | undefined;
-    let codeInBody: string | undefined;
-    let codeVerifierInBody: string | undefined;
-    let redirectUriInBody: string | undefined;
+    let deviceCodeInBody: string | undefined;
 
     let refreshTokenInBody: string | undefined;
     let scopeInBody: string[] | undefined;
@@ -420,10 +413,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
       const form = await req.formData();
       body = {
         grant_type: form.get("grant_type"),
-        code: form.get("code"),
-        code_verifier: form.get("code_verifier"),
-        redirect_uri: form.get("redirect_uri"),
-
+        device_code: form.get("device_code"),
         // for refresh token
         refresh_token: form.get("refresh_token"),
         scope: form.get("scope"),
@@ -441,16 +431,8 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
       if ("grant_type" in body) {
         grantTypeInBody = typeof body.grant_type === "string" ? body.grant_type : undefined;
       }
-      if ("code" in body) {
-        codeInBody = typeof body.code === "string" ? body.code : undefined;
-      }
-      if ("code_verifier" in body) {
-        codeVerifierInBody = typeof body.code_verifier === "string"
-          ? body.code_verifier
-          : undefined;
-      }
-      if ("redirect_uri" in body) {
-        redirectUriInBody = typeof body.redirect_uri === "string" ? body.redirect_uri : undefined;
+      if ("device_code" in body) {
+        deviceCodeInBody = typeof body.device_code === "string" ? body.device_code : undefined;
       }
       if ("refresh_token" in body) {
         refreshTokenInBody = typeof body.refresh_token === "string"
@@ -471,10 +453,10 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
         };
       }
     } else if (grantTypeInBody === this.grantType) {
-      if (!codeInBody) {
+      if (!deviceCodeInBody) {
         return {
           success: false,
-          error: new InvalidRequestError("Missing authorization code"),
+          error: new InvalidRequestError("Missing device code"),
         };
       }
     } else {
@@ -495,7 +477,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
     // If the request contains client authentication credentials, validate them
     if (!error) {
       // If clientId is missing, return 401 error
-      if (!clientId) {
+      if (!clientId || !clientSecret) {
         return {
           success: false,
           error: new InvalidClientError("Invalid client credentials"),
@@ -503,14 +485,14 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
       }
 
       if (
-        grantTypeInBody === "authorization_code" && clientAuthMethod === "none" &&
-        !codeVerifierInBody
+        grantTypeInBody === "urn:ietf:params:oauth:grant-type:device_code" &&
+        clientAuthMethod === "none"
       ) {
         // If the client authentication method is "none", then PKCE verification is required for public clients (RFC 7636 §4.1.2).
         return {
           success: false,
           error: new InvalidRequestError(
-            "Public clients must use PKCE with the authorization code grant",
+            "Public clients must use PKCE with the device code grant",
           ),
         };
       }
@@ -531,14 +513,12 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
 
       // Validate client credentials using the model's getClient() method
       let client: OAuth2Client | undefined;
-      if (grantTypeInBody === "authorization_code" && codeInBody) {
-        const tokenRequest: AuthorizationCodeTokenRequest = {
+      if (grantTypeInBody === "urn:ietf:params:oauth:grant-type:device_code" && deviceCodeInBody) {
+        const tokenRequest: DeviceAuthorizationTokenRequest = {
           clientId,
           clientSecret,
           grantType: grantTypeInBody,
-          code: codeInBody,
-          codeVerifier: codeVerifierInBody,
-          redirectUri: redirectUriInBody,
+          deviceCode: deviceCodeInBody,
         };
         client = await this.model.getClient(
           tokenRequest,
@@ -576,15 +556,13 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
 
       return {
         success: true,
-        context: grantTypeInBody === "authorization_code"
+        context: grantTypeInBody === "urn:ietf:params:oauth:grant-type:device_code"
           ? {
             client,
             grantType: grantTypeInBody,
             tokenType: this.tokenType,
             accessTokenLifetime: this.accessTokenLifetime,
-            code: codeInBody!,
-            codeVerifier: codeVerifierInBody,
-            redirectUri: redirectUriInBody,
+            deviceCode: deviceCodeInBody!,
           }
           : {
             client,
@@ -612,7 +590,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
     // generate access token from client, valid scope,
     // and any other relevant information,
     // using the model's generateAccessToken() or generateAccessTokenFromRefreshToken() methods
-    const accessTokenResult = context.grantType === "authorization_code"
+    const accessTokenResult = context.grantType === "urn:ietf:params:oauth:grant-type:device_code"
       ? await this.model.generateAccessToken?.(
         // avoid mutation
         { ...context },
@@ -658,4 +636,3 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow impleme
     };
   }
 }
-*/
