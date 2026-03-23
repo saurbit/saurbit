@@ -52,7 +52,7 @@ export interface OIDCDeviceAuthorizationFlowOptions
   registrationEndpoint?: string;
 }
 
-export class OIDCDeviceAuthorizationFlowBuilder extends AbstractDeviceAuthorizationFlow
+export class OIDCDeviceAuthorizationFlow extends AbstractDeviceAuthorizationFlow
   implements OIDCFlow {
   protected discoveryUrl: string;
   protected jwksEndpoint: string;

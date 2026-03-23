@@ -6,6 +6,7 @@ export { DeviceAuthorizationFlowBuilder } from "./builders/device_authorization_
 export { OAuth2FlowBuilder } from "./builders/flow_builder.ts";
 export { OIDCAuthorizationCodeFlowBuilder } from "./builders/oidc_authorization_code_builder.ts";
 export { OIDCClientCredentialsFlowBuilder } from "./builders/oidc_client_credentials_builder.ts";
+export { OIDCDeviceAuthorizationFlowBuilder } from "./builders/oidc_device_authorization_builder.ts";
 
 //#endregion
 
@@ -94,7 +95,7 @@ export type {
   OIDCDeviceAuthorizationFlowOptions,
   OIDCDeviceAuthorizationModel,
 } from "./oidc/oidc_device_authorization.ts";
-export { OIDCDeviceAuthorizationFlowBuilder } from "./oidc/oidc_device_authorization.ts";
+export { OIDCDeviceAuthorizationFlow } from "./oidc/oidc_device_authorization.ts";
 export { OIDCMultipleFlows } from "./oidc/oidc_multiple_flows.ts";
 export type { OIDCFlow, OIDCFlowExtendedOptions, OIDCUserInfo } from "./oidc/types.ts";
 
