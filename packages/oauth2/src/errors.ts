@@ -156,24 +156,3 @@ export class UnauthorizedRequestError extends OAuth2Error {
     this.name = "UnauthorizedRequestError";
   }
 }
-
-export const DeviceAuthorizationFlowErrorCodes = Object.freeze(
-  {
-    /**
-     * User denied the request. Stop polling.
-     */
-    ACCESS_DENIED: "access_denied",
-    /**
-     * User hasn't completed authorization yet. Client should keep polling.
-     */
-    AUTHORIZATION_PENDING: "authorization_pending",
-    /**
-     * Client is polling too fast. Increase interval by 5 seconds.
-     */
-    SLOW_DOWN: "slow_down",
-    /**
-     * The device code has expired. The client should request a new device code.
-     */
-    EXPIRED_TOKEN: "expired_token",
-  } as const,
-);

@@ -162,7 +162,6 @@ export {
 export {
   AccessDeniedError,
   AuthorizationPendingError,
-  DeviceAuthorizationFlowErrorCodes,
   ExpiredTokenError,
   InsufficientScopeError,
   InvalidClientError,
