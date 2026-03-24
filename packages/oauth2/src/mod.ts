@@ -136,18 +136,12 @@ export type { TokenType, TokenTypeValidationResponse } from "./token_types/types
 //#region Utilities
 
 export type {
-  JwksKeyStore,
-  JwksRotationTimestampStore,
-  JwksRotatorOptions,
-  JwtAuthority,
+  JwkVerify,
+  JwtDecode,
   JwtPayload,
-  JwtSigner,
   JwtVerifier,
-  KeyGenerator,
-  RawKey,
-  RSA,
+  JwtVerify,
 } from "./utils/jwt_authority.ts";
-export { JwksRotator } from "./utils/jwt_authority.ts";
 export {
   createInMemoryReplayStore,
   InMemoryReplayStore,

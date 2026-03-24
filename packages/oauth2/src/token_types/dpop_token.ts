@@ -61,7 +61,6 @@ export class DPoPTokenType implements TokenType {
     try {
       const payload = await this.#jwkVerify(
         dpopHeader,
-        { algorithms: ["ES256"] },
       );
 
       if (payload.htm !== req.method.toUpperCase()) {

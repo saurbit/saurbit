@@ -1,0 +1,19 @@
+{
+  "name": "@saurbit/oauth2-jwt",
+  "version": "0.1.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "publish": {
+    "include": [
+      "LICENSE",
+      "README.md",
+      "src/**/*.ts"
+    ]
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1.0.19",
+    "jose": "npm:jose@^6.2.2"
+  }
+}
