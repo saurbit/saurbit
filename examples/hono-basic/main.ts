@@ -237,7 +237,7 @@ app.post(
       const error = result.error;
       if (error instanceof UnsupportedGrantTypeError || error instanceof UnauthorizedClientError) {
         return c.json(
-          { error: result.error.errorCode, errorDescription: result.error.message },
+          { error: error.errorCode, errorDescription: error.message },
           400,
         );
       } else {
