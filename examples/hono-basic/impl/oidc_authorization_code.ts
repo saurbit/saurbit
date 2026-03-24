@@ -5,7 +5,7 @@ import { StrategyInternalError } from "@saurbit/oauth2";
 import { BearerTokenType, HonoOIDCAuthorizationCodeFlowBuilder } from "@saurbit/hono-oauth2";
 import { HTTPException } from "hono/http-exception";
 import { html } from "hono/html";
-import { HTTPRateLimitException, verifyTokenFunction } from "./common.ts";
+import { HTTPRateLimitException } from "./common.ts";
 import { jwksAuthority } from "./jwks_authority.ts";
 
 export const oidcAuthorizationCodeFlow = HonoOIDCAuthorizationCodeFlowBuilder.create({
@@ -196,7 +196,7 @@ export const oidcAuthorizationCodeFlow = HonoOIDCAuthorizationCodeFlowBuilder.cr
     }
   })
   .generateAccessToken(async ({
-    accessTokenLifetime: _a,
+    accessTokenLifetime,
     client,
     grantType: _g,
     tokenType: _t,
@@ -211,8 +211,15 @@ export const oidcAuthorizationCodeFlow = HonoOIDCAuthorizationCodeFlowBuilder.cr
     });
     // In a real implementation, you would generate a secure token here
     if (code.startsWith("authcode-") && Array.isArray(client.metadata?.newScope)) {
+      const { token: accessToken } = await jwksAuthority.sign({
+        username: "admin",
+        level: 51,
+        scope: client.metadata.newScope,
+        exp: Math.floor(Date.now() / 1000) + accessTokenLifetime, // Example expiration time
+        iat: Math.floor(Date.now() / 1000), // Issued at time
+      });
       return {
-        accessToken: "admin-" + client.metadata?.newScope.join(","),
+        accessToken: accessToken,
         scope: client.metadata?.newScope,
         refreshToken: "valid-refresh-token-" + client.metadata?.newScope.join(","),
         idToken:
@@ -220,7 +227,7 @@ export const oidcAuthorizationCodeFlow = HonoOIDCAuthorizationCodeFlowBuilder.cr
       };
     }
   })
-  .generateAccessTokenFromRefreshToken((context) => {
+  .generateAccessTokenFromRefreshToken(async (context) => {
     console.log("generateAccessTokenFromRefreshToken called with:", {
       client: context.client,
       grantType: context.grantType,
@@ -231,15 +238,48 @@ export const oidcAuthorizationCodeFlow = HonoOIDCAuthorizationCodeFlowBuilder.cr
       context.refreshToken.startsWith("valid-refresh-token-") &&
       Array.isArray(context.client.metadata?.newScope)
     ) {
+      const { token: accessToken } = await jwksAuthority.sign({
+        username: "admin",
+        level: 52,
+        scope: context.refreshToken.slice("valid-refresh-token-".length).split(","),
+        exp: Math.floor(Date.now() / 1000) + 10, // Example expiration time
+        iat: Math.floor(Date.now() / 1000), // Issued at time
+      });
       return {
-        accessToken: "admin-" + context.refreshToken.slice("valid-refresh-token-".length),
+        accessToken: accessToken,
         scope: context.client.metadata?.newScope,
       };
     }
   })
   // -- handlers for token verification and failed authorization
 
-  .verifyTokenHandler(verifyTokenFunction)
+  .verifyTokenHandler(async (
+    _context,
+    { token },
+  ) => {
+    console.log("verifyToken called with token:", token);
+    const accessTokenJwtPayload = await jwksAuthority.verify(token);
+    console.log("Decoded access token payload:", accessTokenJwtPayload);
+    if (
+      accessTokenJwtPayload &&
+      typeof accessTokenJwtPayload.username === "string" &&
+      typeof accessTokenJwtPayload.level === "number" &&
+      Array.isArray(accessTokenJwtPayload.scope)
+    ) {
+      return {
+        isValid: true,
+        credentials: {
+          user: {
+            username: accessTokenJwtPayload.username,
+            level: accessTokenJwtPayload.level,
+          },
+          scope: accessTokenJwtPayload.scope,
+        },
+      };
+    }
+
+    return { isValid: false };
+  })
   .failedAuthorizationAction((_, error) => {
     // You can perform additional actions here, such as logging or modifying the response
     console.log("Authorization failed:", {

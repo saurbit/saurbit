@@ -141,7 +141,7 @@ export type {
   JwtPayload,
   JwtVerifier,
   JwtVerify,
-} from "./utils/jwt_authority.ts";
+} from "./utils/jwt_types.ts";
 export {
   createInMemoryReplayStore,
   InMemoryReplayStore,
@@ -193,7 +193,6 @@ export {
   StrategyInternalError,
   StrategyInvalidTokenError,
   StrategyInvalidTokenTypeError,
-  StrategyJwtVerificationError,
 } from "./strategy.ts";
 
 //#endregion

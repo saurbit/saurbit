@@ -1,4 +1,4 @@
-import { JwtDecode, JwtPayload, JwtVerify } from "../utils/jwt_authority.ts";
+import { JwtDecode, JwtPayload, JwtVerify } from "../utils/jwt_types.ts";
 import { ClientAuthMethod, ClientAuthMethodResponse } from "./types.ts";
 
 export enum ClientSecretJwtAlgorithms {

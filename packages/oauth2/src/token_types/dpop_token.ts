@@ -1,4 +1,4 @@
-import { JwkVerify } from "../utils/jwt_authority.ts";
+import { JwkVerify } from "../utils/jwt_types.ts";
 import { InMemoryReplayStore, ReplayDetector } from "../utils/replay_store.ts";
 import type { TokenType, TokenTypeValidationResponse } from "./types.ts";
 

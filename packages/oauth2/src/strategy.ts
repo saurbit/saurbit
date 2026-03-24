@@ -1,4 +1,3 @@
-import type { JwtPayload, JwtVerifier } from "./utils/jwt_authority.ts";
 import type { TokenType } from "./token_types/types.ts";
 
 /**
@@ -23,13 +22,6 @@ export class StrategyInvalidTokenTypeError extends StrategyError {
  * Returned when the token format/value is invalid.
  */
 export class StrategyInvalidTokenError extends StrategyError {
-  readonly status = 401 as const;
-}
-
-/**
- * Returned when JWT verification fails.
- */
-export class StrategyJwtVerificationError extends StrategyError {
   readonly status = 401 as const;
 }
 
@@ -94,11 +86,6 @@ export interface StrategyVerifyTokenFunction<Req = Request> {
        * The access token to validate and/or decode
        */
       token: string;
-      /**
-       * Only defined if jwtVerifier is provided.
-       * Otherwise, validate and decode the token manually.
-       */
-      jwtAccessTokenPayload?: JwtPayload;
     },
   ):
     | Promise<{
@@ -115,7 +102,6 @@ export interface StrategyVerifyTokenFunction<Req = Request> {
 
 export interface StrategyOptions {
   tokenType: TokenType;
-  jwtVerifier?: JwtVerifier;
   verifyToken?: StrategyVerifyTokenFunction<Request>;
 }
 
@@ -145,18 +131,9 @@ export async function evaluateStrategy(
     return { success: false, error: new StrategyInvalidTokenError(tokenValidation.message) };
   }
 
-  let jwtAccessTokenPayload: JwtPayload | undefined;
-  if (options.jwtVerifier) {
-    try {
-      jwtAccessTokenPayload = await options.jwtVerifier.verify(token);
-    } catch {
-      return { success: false, error: new StrategyJwtVerificationError("JWT verification failed") };
-    }
-  }
-
   if (options.verifyToken) {
     try {
-      const result = await options.verifyToken(request.clone(), { token, jwtAccessTokenPayload });
+      const result = await options.verifyToken(request.clone(), { token });
       if (result?.isValid && result.credentials) {
         return { success: true, credentials: result.credentials };
       }
