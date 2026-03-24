@@ -14,5 +14,8 @@
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.19"
+  },
+  "tasks": {
+    "build:npm": "deno run -A scripts/build_npm.ts"
   }
 }
