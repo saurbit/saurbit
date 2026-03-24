@@ -15,7 +15,7 @@ await build({
     license: "MIT",
     repository: {
       type: "git",
-      url: "git+https://github.com/your-user/saurbit.git",
+      url: "git+https://github.com/saurbit/saurbit.git",
     },
     keywords: ["oauth2", "oidc", "openid-connect"],
   },
