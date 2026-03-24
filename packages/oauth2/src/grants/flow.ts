@@ -345,12 +345,6 @@ export abstract class OAuth2Flow {
     }
     */
 
-  /*
-    async checkAndRotateKeys(): Promise<void> {
-        return this.getJwksRotator()?.checkAndRotateKeys();
-    }
-        */
-
   getTokenEndpointAuthMethods(): TokenEndpointAuthMethod[] {
     const result = Object.keys(this._clientAuthMethods)
       .map((key) => {
@@ -413,87 +407,6 @@ export abstract class OAuth2Flow {
   getDescription(): string | undefined {
     return this.description;
   }
-
-  /**
-   * Where authentication schemes and strategies are registered.
-   */
-  /*
-    integrateStrategy(t: KaapiTools): void {
-        const tokenTypePrefix = this.tokenType;
-        const tokenTypeInstance = this._tokenType;
-        const getJwtAuthority = () => this.getJwtAuthority();
-
-        t.scheme(this.securitySchemeName, (_server, options) => {
-            return {
-                async authenticate(request, h) {
-                    const settings: OAuth2AuthOptions = Hoek.applyToDefaults({}, options || {});
-
-                    const authorization = request.raw.req.headers.authorization;
-
-                    const authSplit = authorization ? authorization.split(/\s+/) : ['', ''];
-
-                    const tokenType = authSplit[0];
-                    let jwtAccessTokenPayload: JWTPayload | undefined;
-
-                    if (tokenType.toLowerCase() !== tokenTypePrefix.toLowerCase()) {
-                        return Boom.unauthorized(null, tokenTypePrefix);
-                    }
-
-                    const token = authSplit[1];
-
-                    if (!(await tokenTypeInstance.isValid(request, token)).isValid) {
-                        return Boom.unauthorized(null, tokenTypePrefix);
-                    }
-
-                    const jwtAuthority = getJwtAuthority();
-
-                    if (jwtAuthority && settings.useAccessTokenJwks) {
-                        try {
-                            jwtAccessTokenPayload = await jwtAuthority.verify(token);
-                        } catch (err) {
-                            t.log.error(err);
-                            return Boom.unauthorized(null, tokenTypePrefix);
-                        }
-                    }
-
-                    if (settings.validate) {
-                        try {
-                            const result = await settings.validate?.(request, { token, jwtAccessTokenPayload }, h);
-
-                            if (result && 'isAuth' in result) {
-                                return result;
-                            }
-
-                            if (result && 'isBoom' in result) {
-                                return result;
-                            }
-
-                            if (result) {
-                                const { isValid, credentials, artifacts, message } = result;
-
-                                if (isValid && credentials) {
-                                    return h.authenticated({ credentials, artifacts });
-                                }
-
-                                if (message) {
-                                    return h.unauthenticated(Boom.unauthorized(message, tokenTypePrefix), {
-                                        credentials: credentials || {},
-                                        artifacts,
-                                    });
-                                }
-                            }
-                        } catch (err) {
-                            return Boom.internal(err instanceof Error ? err : `${err}`);
-                        }
-                    }
-
-                    return Boom.unauthorized(null, tokenTypePrefix);
-                },
-            };
-        });
-        t.strategy(this.securitySchemeName, this.securitySchemeName, this.options);
-    }
-        */
 
   /**
    * Verifies the token grants access

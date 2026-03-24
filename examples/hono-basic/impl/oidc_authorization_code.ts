@@ -6,6 +6,7 @@ import { BearerTokenType, HonoOIDCAuthorizationCodeFlowBuilder } from "@saurbit/
 import { HTTPException } from "hono/http-exception";
 import { html } from "hono/html";
 import { HTTPRateLimitException, verifyTokenFunction } from "./common.ts";
+import { jwksAuthority } from "./jwks_authority.ts";
 
 export const oidcAuthorizationCodeFlow = HonoOIDCAuthorizationCodeFlowBuilder.create({
   parseAuthorizationEndpointData: async (context) => {
@@ -194,7 +195,7 @@ export const oidcAuthorizationCodeFlow = HonoOIDCAuthorizationCodeFlowBuilder.cr
       });
     }
   })
-  .generateAccessToken(({
+  .generateAccessToken(async ({
     accessTokenLifetime: _a,
     client,
     grantType: _g,
@@ -214,7 +215,8 @@ export const oidcAuthorizationCodeFlow = HonoOIDCAuthorizationCodeFlowBuilder.cr
         accessToken: "admin-" + client.metadata?.newScope.join(","),
         scope: client.metadata?.newScope,
         refreshToken: "valid-refresh-token-" + client.metadata?.newScope.join(","),
-        idToken: '{"sub":"1234567890","name":"John Doe","admin":true}', // Example ID token payload
+        idToken:
+          (await jwksAuthority.sign({ sub: "1234567890", name: "John Doe", admin: true })).token, // Example ID token payload
       };
     }
   })

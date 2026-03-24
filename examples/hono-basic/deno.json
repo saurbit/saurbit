@@ -12,7 +12,8 @@
     "openapi-types": "npm:openapi-types@^12.1.3"
   },
   "tasks": {
-    "dev": "deno run --allow-net --allow-env --watch main_device.ts",
+    "dev": "deno run --allow-net --allow-env --watch main_oidc.ts",
+    "dev:device": "deno run --allow-net --allow-env --watch main_device.ts",
     "dev:oidc": "deno run --allow-net --allow-env --watch main_oidc.ts",
     "start": "deno run --allow-net --allow-env main.ts"
   }

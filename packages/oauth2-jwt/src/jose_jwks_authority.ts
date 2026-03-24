@@ -1,4 +1,13 @@
-import jose, { JWTHeaderParameters, JWTPayload } from "jose";
+import {
+  exportJWK,
+  generateKeyPair,
+  importJWK,
+  JWK,
+  JWTHeaderParameters,
+  JWTPayload,
+  jwtVerify,
+  SignJWT,
+} from "jose";
 import { JwksKeyStore, JwtAuthority, RawKey, RSA } from "./types.ts";
 
 // Fast path for Node/Bun
@@ -41,14 +50,15 @@ export class JoseJwksAuthority implements JwtAuthority {
     this.#ttl = ttl;
   }
 
-  async #generateAndStoreKeyPair(): Promise<{ privateJwk: jose.JWK; publicJwk: jose.JWK }> {
-    const { publicKey, privateKey } = await jose.generateKeyPair("RS256", {
+  async #generateAndStoreKeyPair(): Promise<{ privateJwk: JWK; publicJwk: JWK }> {
+    const { publicKey, privateKey } = await generateKeyPair("RS256", {
       modulusLength: 2048,
+      extractable: true,
     });
 
     // Convert to JWK format and add necessary properties
-    const privateJwk = await jose.exportJWK(privateKey);
-    const publicJwk = await jose.exportJWK(publicKey);
+    const privateJwk = await exportJWK(privateKey);
+    const publicJwk = await exportJWK(publicKey);
 
     const kid = crypto.randomUUID();
     privateJwk.kid = kid;
@@ -63,7 +73,7 @@ export class JoseJwksAuthority implements JwtAuthority {
     return { privateJwk, publicJwk };
   }
 
-  async #getPrivateKey(): Promise<jose.JWK> {
+  async #getPrivateKey(): Promise<JWK> {
     const storedPrivateJwk = await this.#store.getPrivateKey();
     if (storedPrivateJwk) {
       return storedPrivateJwk;
@@ -143,9 +153,9 @@ export class JoseJwksAuthority implements JwtAuthority {
       throw new Error('Key is missing "kid" property');
     }
 
-    const privateKey = await jose.importJWK(key, "RS256");
+    const privateKey = await importJWK(key, "RS256");
 
-    const token = await new jose.SignJWT(payload as jose.JWTPayload)
+    const token = await new SignJWT(payload as JWTPayload)
       .setProtectedHeader({ typ: "jwt", alg: "RS256", kid: key.kid })
       .sign(privateKey);
 
@@ -173,7 +183,7 @@ export class JoseJwksAuthority implements JwtAuthority {
 
     if (!key) throw new Error(`Key with kid "${kid}" not found`);
 
-    const { payload, protectedHeader } = await jose.jwtVerify<P>(token, key);
+    const { payload, protectedHeader } = await jwtVerify<P>(token, key);
 
     if (protectedHeader.alg !== "RS256") {
       throw new Error(`Unexpected algorithm: ${protectedHeader.alg}`);
@@ -208,12 +218,12 @@ export class JoseJwksAuthority implements JwtAuthority {
       throw new Error('Key is missing "kid" property');
     }
 
-    const privateKey = await jose.importJWK(key, "RS256");
+    const privateKey = await importJWK(key, "RS256");
 
     const result: { token: string; kid: string }[] = [];
 
     for (const payload of payloads) {
-      const token = await new jose.SignJWT(payload as jose.JWTPayload)
+      const token = await new SignJWT(payload as JWTPayload)
         .setProtectedHeader({ typ: "jwt", alg: "RS256", kid: key.kid })
         .sign(privateKey);
 

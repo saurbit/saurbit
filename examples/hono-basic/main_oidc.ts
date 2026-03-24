@@ -18,6 +18,7 @@ import { oidcMultipleFlows } from "./impl/oidc.ts";
 import { oauth2Redirect } from "./swagger_ui/oauth2_redirect.ts";
 import { AccessDeniedError } from "@saurbit/oauth2";
 import { HTTPRateLimitException } from "./impl/common.ts";
+import { jwksAuthority, jwksRotator } from "./impl/jwks_authority.ts";
 
 const app = new Hono();
 
@@ -44,6 +45,10 @@ app.get(
     return c.json({ message: "Hello from Hono!" });
   },
 );
+
+app.get(oidcAuthorizationCodeFlow.getJwksEndpoint(), async (c) => {
+  return c.json(await jwksAuthority.getJwksEndpointResponse());
+});
 
 app.get("/authorize", async (c) => {
   const result = await oidcAuthorizationCodeFlow.hono().handleAuthorizationEndpoint(c);
@@ -247,5 +252,7 @@ app.get("/docs/ui", swaggerUI({ url: "/openapi.json" }));
 app.get("/docs/oauth2-redirect.html", oauth2Redirect);
 
 app.get("/health", (c) => c.text("OK"));
+
+await jwksRotator.checkAndRotateKeys();
 
 Deno.serve({ port: 3000 }, app.fetch);
