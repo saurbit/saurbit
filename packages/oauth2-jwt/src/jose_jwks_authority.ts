@@ -33,8 +33,8 @@ export class JoseJwksAuthority implements JwtAuthority {
   #ttl: number;
 
   /**
-   * @param store
-   * @param ttl seconds
+   * @param store The key store used to manage JWKS keys.
+   * @param ttl Time-to-live for the keys in seconds.
    */
   constructor(store: JwksKeyStore, ttl: number = 36000) {
     this.#store = store;
@@ -73,6 +73,10 @@ export class JoseJwksAuthority implements JwtAuthority {
     }
   }
 
+  /**
+   * Retrieves the current set of public keys from the key store.
+   * @returns An object containing the array of public keys.
+   */
   async getPublicKeys(): Promise<{ keys: RawKey[] }> {
     const publicJwks = await this.#store.getPublicKeys();
     const json = { keys: publicJwks } as { keys: RawKey[] };
