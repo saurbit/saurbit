@@ -1,4 +1,12 @@
-// grants/authorization_code.ts
+/**
+ * @module
+ *
+ * Implements the OAuth 2.0 Authorization Code grant type, with optional PKCE support
+ * and OpenID Connect extensions.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc6749#section-4.1
+ * @see https://datatracker.ietf.org/doc/html/rfc7636
+ */
 
 import {
   AccessDeniedError,
@@ -23,10 +31,19 @@ import {
   OAuth2RefreshTokenRequest,
 } from "./flow.ts";
 
+/**
+ * Represents an authenticated end-user associated with an authorization code request.
+ * Extend via declaration merging to add application-specific user properties.
+ */
 export interface AuthorizationCodeUser {
   [key: string]: unknown;
 }
 
+/**
+ * Represents additional request data submitted by the user at the authorization endpoint
+ * (e.g. login form fields, consent selections).
+ * Extend via declaration merging or the `AuthReqData` type parameter to add typed fields.
+ */
 export interface AuthorizationCodeReqData {
   [key: string]: unknown;
 }
@@ -47,12 +64,25 @@ export interface AuthorizationCodeGrant {
  * to generate tokens with appropriate lifetimes, etc.
  */
 export interface AuthorizationCodeGrantContext {
+  /** The authenticated client exchanging the authorization code. */
   client: OAuth2Client;
+
+  /** The grant type identifier. Always `"authorization_code"`. */
   grantType: "authorization_code";
+
+  /** The token type prefix (e.g. `"Bearer"`, `"DPoP"`). */
   tokenType: string;
+
+  /** The access token lifetime in seconds. */
   accessTokenLifetime: number;
+
+  /** The authorization code being exchanged for tokens. */
   code: string;
+
+  /** The PKCE code verifier, if PKCE was used in the authorization request. */
   codeVerifier?: string;
+
+  /** The redirect URI presented at the token endpoint, if provided. */
   redirectUri?: string;
 }
 
@@ -60,11 +90,21 @@ export interface AuthorizationCodeGrantContext {
  * Raw token request parameters for authorization code grant.
  */
 export interface AuthorizationCodeTokenRequest {
+  /** The client identifier. */
   clientId: string;
+
+  /** The grant type value. Always `"authorization_code"`. */
   grantType: "authorization_code";
+
+  /** The authorization code received from the authorization endpoint. */
   code: string;
+
+  /** The PKCE code verifier, if PKCE was used in the authorization request. */
   codeVerifier?: string;
+
+  /** The client secret, if the client is confidential. */
   clientSecret?: string;
+
   /**
    * The redirect URI presented at the token endpoint.
    *
@@ -85,13 +125,24 @@ export interface AuthorizationCodeTokenRequest {
  * to generate an authorization code with appropriate scope, etc.
  */
 export interface AuthorizationCodeEndpointContext {
+  /** The client requesting authorization. */
   client: OAuth2Client;
-  responseType: "code"; // should be "code" for authorization code grant
+
+  /** The response type. Always `"code"` for the authorization code grant. */
+  responseType: "code";
+
+  /** The redirect URI to send the authorization code to after authorization. */
   redirectUri: string;
+
+  /** The validated scopes requested by the client. */
   scope: string[];
+
+  /** An opaque value used to maintain state between the request and callback. */
   state?: string;
+
   /** PKCE code challenge (if provided). */
   codeChallenge?: string;
+
   /** PKCE code challenge method (`plain` | `S256`). */
   codeChallengeMethod?: "plain" | "S256";
 }
@@ -100,37 +151,88 @@ export interface AuthorizationCodeEndpointContext {
  * Raw authentication request parameters for authorization code grant.
  */
 export interface AuthorizationCodeEndpointRequest {
+  /** The client identifier from the authorization request query string. */
   clientId: string;
-  responseType: "code"; // should be "code" for authorization code grant
+
+  /** The response type. Always `"code"` for the authorization code grant. */
+  responseType: "code";
+
+  /** The redirect URI from the authorization request query string. */
   redirectUri: string;
+
+  /** The requested scopes, if provided. */
   scope?: string[];
+
+  /** The state value from the authorization request, if provided. */
   state?: string;
+
   /** PKCE code challenge (if provided). */
   codeChallenge?: string;
+
   /** PKCE code challenge method (`plain` | `S256`). */
   codeChallengeMethod?: "plain" | "S256";
 }
 
+/**
+ * Result returned by `processAuthorization()` when further interaction is needed
+ * before an authorization code can be issued (e.g. multi-step consent flows).
+ *
+ * @template C - The authorization endpoint context type.
+ */
 export interface AuthorizationCodeEndpointContinueResponse<
   C extends AuthorizationCodeEndpointContext = AuthorizationCodeEndpointContext,
 > {
+  /** The authorization endpoint context at the time of the continue response. */
   context: C;
+
+  /** The authenticated user. */
   user: AuthorizationCodeUser;
+
+  /** An optional message describing the next step required. */
   message?: string;
+
+  /** Discriminator ensuring this is not an error response. */
   error?: never;
+
+  /** Additional application-specific fields. */
   [key: string]: unknown;
 }
 
+/**
+ * Result returned by `processAuthorization()` when an authorization code has been successfully generated.
+ *
+ * @template C - The authorization endpoint context type.
+ */
 export interface AuthorizationCodeEndpointCodeResponse<
   C extends AuthorizationCodeEndpointContext = AuthorizationCodeEndpointContext,
 > {
+  /** The authorization endpoint context at the time the code was issued. */
   context: C;
+
+  /** The authenticated user. */
   user: AuthorizationCodeUser;
+
+  /** The generated authorization code. */
   code: string;
+
+  /** Discriminator ensuring this is not an error response. */
   error?: never;
+
+  /** Additional application-specific fields. */
   [key: string]: unknown;
 }
 
+/**
+ * The union of all possible outcomes from `handleAuthorizationEndpoint()`.
+ *
+ * - `GET / initiated`: Authorization request was validated; render a login/consent UI.
+ * - `POST / code`: An authorization code was issued; redirect the user to `redirectUri`.
+ * - `POST / continue`: Further user interaction is required before a code can be issued.
+ * - `POST / unauthenticated`: User authentication failed; re-render the login UI.
+ * - `error`: A protocol error occurred.
+ *
+ * @template C - The authorization endpoint context type.
+ */
 export type AuthorizationCodeEndpointResponse<
   C extends AuthorizationCodeEndpointContext = AuthorizationCodeEndpointContext,
 > =
@@ -154,18 +256,33 @@ export type AuthorizationCodeEndpointResponse<
   | {
     type: "error";
     error: OAuth2Error;
+    /** Whether the error can be communicated by redirecting the user to `redirectUri`. */
     redirectable: boolean;
     client?: OAuth2Client;
     redirectUri?: string;
     state?: string;
   };
 
+/**
+ * The result of `initiateAuthorization()` - the first step of the authorization code flow.
+ *
+ * On success, contains the validated {@link AuthorizationCodeEndpointContext} to pass to
+ * `processAuthorization()`.
+ *
+ * @template C - The authorization endpoint context type.
+ */
 export type AuthorizationCodeInitiationResponse<
   C extends AuthorizationCodeEndpointContext = AuthorizationCodeEndpointContext,
 > =
   | { success: true; context: C }
   | { success: false; error: OAuth2Error; redirectable: false };
 
+/**
+ * The result of `processAuthorization()` - the second step of the authorization code flow,
+ * after the user has submitted credentials or consent.
+ *
+ * @template C - The authorization endpoint context type.
+ */
 export type AuthorizationCodeProcessResponse<
   C extends AuthorizationCodeEndpointContext = AuthorizationCodeEndpointContext,
 > =
@@ -185,12 +302,17 @@ export type AuthorizationCodeProcessResponse<
   | {
     type: "error";
     error: OAuth2Error;
+    /** Whether the error can be communicated by redirecting the user to `redirectUri`. */
     redirectable: boolean;
     client?: OAuth2Client;
     redirectUri?: string;
     state?: string;
   };
 
+/**
+ * The access token result shape for the authorization code grant.
+ * Extends the base result with optional refresh token, scope, and ID token fields.
+ */
 export interface AuthorizationCodeAccessTokenResult extends OAuth2AccessTokenResult {
   /**
    * Necessary to return the scope to the client.
@@ -206,10 +328,30 @@ export interface AuthorizationCodeAccessTokenResult extends OAuth2AccessTokenRes
   idToken?: string;
 }
 
+/**
+ * The result returned by a {@link GetUserForAuthenticationFunction}.
+ *
+ * - `authenticated`: The user was successfully identified; contains the user object.
+ * - `unauthenticated`: Authentication failed; contains an optional message for the UI.
+ */
 export type GetUserForAuthenticationResult =
   | { type: "authenticated"; user: AuthorizationCodeUser }
   | { type: "unauthenticated"; message?: string };
 
+/**
+ * A function that authenticates an end-user at the authorization endpoint.
+ *
+ * Called during `processAuthorization()` after the client has been validated.
+ * Should verify the user's submitted credentials against the application's user store.
+ *
+ * @template TContext - The authorization endpoint context type.
+ * @template AuthReqData - The shape of the user-submitted request data (e.g. login form fields).
+ *
+ * @param context - The validated authorization endpoint context.
+ * @param reqData - The user-submitted data from the authorization endpoint request.
+ * @param request - The original HTTP request.
+ * @returns The authentication result, or `undefined` to indicate unauthenticated.
+ */
 export interface GetUserForAuthenticationFunction<
   TContext extends AuthorizationCodeEndpointContext = AuthorizationCodeEndpointContext,
   AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
@@ -227,11 +369,31 @@ export interface GetUserForAuthenticationFunction<
     | undefined;
 }
 
+/**
+ * The result returned by a {@link GenerateAuthorizationCodeFunction}.
+ *
+ * - `code`: An authorization code was generated successfully.
+ * - `continue`: Further interaction is needed before a code can be issued.
+ * - `deny`: The request was explicitly denied (e.g. user declined consent).
+ */
 export type GenerateAuthorizationCodeResult =
   | { type: "code"; code: string }
   | { type: "continue"; message?: string }
   | { type: "deny"; message?: string };
 
+/**
+ * A function that generates an authorization code for an authenticated user.
+ *
+ * Called during `processAuthorization()` after the user has been successfully authenticated.
+ * Should persist the code along with the associated context (client, scope, PKCE params, etc.)
+ * for later retrieval at the token endpoint.
+ *
+ * @template TContext - The authorization endpoint context type.
+ *
+ * @param context - The validated authorization endpoint context.
+ * @param user - The authenticated end-user.
+ * @returns The generation result, or `undefined` on failure.
+ */
 export interface GenerateAuthorizationCodeFunction<
   TContext extends AuthorizationCodeEndpointContext = AuthorizationCodeEndpointContext,
 > {
@@ -273,13 +435,26 @@ export interface AuthorizationCodeModel<
    */
   getClient: OAuth2GetClientFunction<AuthorizationCodeTokenRequest | OAuth2RefreshTokenRequest>;
 
+  /**
+   * Retrieve and validate the client for an authorization endpoint request.
+   * Should verify the `clientId` and `redirectUri` are registered and permitted.
+   */
   getClientForAuthentication: OAuth2GetClientFunction<AuthorizationCodeEndpointRequest>;
 
+  /**
+   * Authenticate the end-user from the submitted request data.
+   * See {@link GetUserForAuthenticationFunction} for the full contract.
+   */
   getUserForAuthentication: GetUserForAuthenticationFunction<
     AuthorizationCodeEndpointContext,
     AuthReqData
   >;
 
+  /**
+   * Generate (or deny) an authorization code for the authenticated user.
+   * Should persist the code and associated context for later token exchange.
+   * See {@link GenerateAuthorizationCodeFunction} for the full contract.
+   */
   generateAuthorizationCode: GenerateAuthorizationCodeFunction<AuthorizationCodeEndpointContext>;
 }
 
@@ -289,10 +464,24 @@ export interface AuthorizationCodeModel<
 export interface AuthorizationCodeFlowOptions<
   AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > extends OAuth2FlowOptions {
+  /** The model implementation providing client lookup, user authentication, and token generation. */
   model: AuthorizationCodeModel<AuthReqData>;
+
+  /** The URL of the authorization endpoint. Defaults to `"/authorize"`. */
   authorizationEndpoint?: string;
 }
 
+/**
+ * Abstract base class for the Authorization Code flow.
+ *
+ * Provides the full request handling pipeline for both the authorization endpoint
+ * (`initiateAuthorization`, `processAuthorization`, `handleAuthorizationEndpoint`)
+ * and the token endpoint (`token`). Subclasses must implement `toOpenAPISecurityScheme()`.
+ *
+ * @template AuthReqData - The shape of user-submitted data at the authorization endpoint.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc6749#section-4.1
+ */
 export abstract class AbstractAuthorizationCodeFlow<
   AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > extends OAuth2Flow implements AuthorizationCodeGrant {
@@ -310,11 +499,19 @@ export abstract class AbstractAuthorizationCodeFlow<
     }
   }
 
+  /**
+   * Sets the URL of the authorization endpoint.
+   *
+   * @param url - The authorization endpoint URL (absolute or relative).
+   */
   setAuthorizationEndpoint(url: string): this {
     this.authorizationEndpoint = url;
     return this;
   }
 
+  /**
+   * Returns the URL of the authorization endpoint.
+   */
   getAuthorizationEndpoint(): string {
     return this.authorizationEndpoint;
   }
@@ -409,6 +606,16 @@ export abstract class AbstractAuthorizationCodeFlow<
     };
   }
 
+  /**
+   * Validates an incoming authorization endpoint `GET` request and returns the
+   * authorization context. Does not interact with the user yet.
+   *
+   * Call this as the first step when the user arrives at the authorization endpoint.
+   * On success, store the returned context and render a login/consent UI.
+   *
+   * @param request - The incoming `GET` request to the authorization endpoint.
+   * @returns The initiation response with the validated context, or a non-redirectable error.
+   */
   async initiateAuthorization(
     request: Request,
   ): Promise<AuthorizationCodeInitiationResponse> {
@@ -423,6 +630,17 @@ export abstract class AbstractAuthorizationCodeFlow<
     return await this.getAuthorizationCodeEndpointContext(request);
   }
 
+  /**
+   * Processes the user's submitted credentials or consent at the authorization endpoint.
+   *
+   * Call this after the user has submitted the login/consent form. Authenticates the user
+   * via `model.getUserForAuthentication()` and, if successful, generates an authorization
+   * code via `model.generateAuthorizationCode()`.
+   *
+   * @param request - The incoming HTTP request (typically `POST`) to the authorization endpoint.
+   * @param reqData - The user-submitted data (e.g. login form fields, consent selections).
+   * @returns The process response - a code, a continue prompt, an unauthenticated result, or an error.
+   */
   async processAuthorization(
     request: Request,
     reqData: AuthReqData,
@@ -534,6 +752,16 @@ export abstract class AbstractAuthorizationCodeFlow<
     };
   }
 
+  /**
+   * Unified handler for `GET` and `POST` requests to the authorization endpoint.
+   *
+   * Delegates `GET` to `initiateAuthorization()` and `POST` to `processAuthorization()`.
+   * Returns a discriminated union suitable for rendering a response in any HTTP framework.
+   *
+   * @param request - The incoming HTTP request to the authorization endpoint.
+   * @param reqData - The user-submitted data (used for `POST` requests only).
+   * @returns The endpoint response - a discriminated union of all possible outcomes.
+   */
   async handleAuthorizationEndpoint(
     request: Request,
     reqData: AuthReqData,
@@ -582,6 +810,16 @@ export abstract class AbstractAuthorizationCodeFlow<
     };
   }
 
+  /**
+   * Validates the token endpoint request (both `authorization_code` and `refresh_token` grant types)
+   * and returns the resolved grant context without yet generating tokens.
+   *
+   * Useful when you need to inspect the context before deciding how to generate tokens.
+   * Most callers should use `token()` directly instead.
+   *
+   * @param request - The incoming token endpoint HTTP request.
+   * @returns The grant context on success, or a failure with an error.
+   */
   async initiateToken(request: Request): Promise<
     | {
       success: true;
@@ -792,10 +1030,12 @@ export abstract class AbstractAuthorizationCodeFlow<
   }
 
   /**
-   * Handle a token request for the authorization code grant type.
+   * Handles a token request for the authorization code grant type (or refresh token grant).
    * Validates the authorization code and generates an access token if valid.
    * Returns an appropriate error response if validation fails.
-   * @param request The incoming HTTP request.
+   *
+   * @param request - The incoming token endpoint HTTP request.
+   * @returns A token response with the generated access token, or a failure with an error.
    */
   async token(request: Request): Promise<OAuth2FlowTokenResponse> {
     const initiationResult = await this.initiateToken(request);
@@ -856,9 +1096,25 @@ export abstract class AbstractAuthorizationCodeFlow<
   }
 }
 
+/**
+ * Concrete Authorization Code flow implementation.
+ *
+ * Extends {@link AbstractAuthorizationCodeFlow} with an OpenAPI security scheme
+ * definition for the `authorizationCode` OAuth 2.0 flow type.
+ *
+ * @template AuthReqData - The shape of user-submitted data at the authorization endpoint.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc6749#section-4.1
+ */
 export class AuthorizationCodeFlow<
   AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > extends AbstractAuthorizationCodeFlow<AuthReqData> {
+  /**
+   * Returns the OpenAPI security scheme definition for this flow.
+   * Uses the `oauth2` scheme type with an `authorizationCode` flow.
+   *
+   * @returns An object keyed by the security scheme name with the scheme definition.
+   */
   toOpenAPISecurityScheme(): Record<
     string,
     {

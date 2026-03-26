@@ -1,3 +1,13 @@
+/**
+ * @module
+ *
+ * Implements the OAuth 2.0 Device Authorization Grant (RFC 8628), allowing
+ * input-constrained devices (e.g. smart TVs, CLI tools) to obtain access tokens
+ * by having the user complete authorization on a secondary device.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8628
+ */
+
 import {
   AccessDeniedError,
   AuthorizationPendingError,
@@ -25,55 +35,122 @@ import {
   OAuth2RefreshTokenRequest,
 } from "./flow.ts";
 
+/**
+ * Marker interface for the Device Authorization grant type.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8628
+ */
 export interface DeviceAuthorizationGrant {
   /** The grant type identifier. */
   readonly grantType: "urn:ietf:params:oauth:grant-type:device_code";
 }
 
+/**
+ * Validation context for the device authorization grant,
+ * passed to the model's `generateAccessToken()` method to produce
+ * a token with appropriate lifetime, type, etc.
+ */
 export interface DeviceAuthorizationGrantContext {
+  /** The authenticated client polling the token endpoint. */
   client: OAuth2Client;
+
+  /** The grant type identifier. Always `"urn:ietf:params:oauth:grant-type:device_code"`. */
   grantType: "urn:ietf:params:oauth:grant-type:device_code";
+
+  /** The token type prefix (e.g. `"Bearer"`, `"DPoP"`). */
   tokenType: string;
+
+  /** The access token lifetime in seconds. */
   accessTokenLifetime: number;
+
+  /** The device code being polled. */
   deviceCode: string;
 }
 
 /**
- * Raw token request parameters for device code grant.
+ * Raw token request parameters for the device code grant.
  */
 export interface DeviceAuthorizationTokenRequest {
+  /** The client identifier. */
   clientId: string;
+
+  /** The grant type value. Always `"urn:ietf:params:oauth:grant-type:device_code"`. */
   grantType: "urn:ietf:params:oauth:grant-type:device_code";
+
+  /** The device code previously issued by the device authorization endpoint. */
   deviceCode: string;
+
+  /** The client secret, if the client is confidential. */
   clientSecret?: string;
 }
 
+/**
+ * Validation context for the device authorization endpoint,
+ * passed to the model's `generateDeviceCode()` method.
+ */
 export interface DeviceAuthorizationEndpointContext {
+  /** The client requesting device authorization. */
   client: OAuth2Client;
+
+  /** The validated scopes requested by the client. */
   scope: string[];
 }
 
 /**
- * Raw authentication request parameters for device code grant.
+ * Raw authentication request parameters for the device authorization endpoint.
  */
 export interface DeviceAuthorizationEndpointRequest {
+  /** The client identifier. */
   clientId: string;
+
+  /** The client secret, if the client is confidential. */
   clientSecret?: string;
+
+  /** The requested scopes, if provided. */
   scope?: string[];
 }
 
+/**
+ * The successful response from `processAuthorization()`, containing the
+ * device code, user code, and verification endpoints to return to the device.
+ *
+ * @template C - The device authorization endpoint context type.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8628#section-3.2
+ */
 export interface DeviceAuthorizationEndpointCodeResponse<
   C extends DeviceAuthorizationEndpointContext = DeviceAuthorizationEndpointContext,
 > {
+  /** The authorization endpoint context associated with this device code. */
   context: C;
+
+  /** The device verification code. Opaque to the end-user. */
   deviceCode: string;
+
+  /** The end-user verification code to be displayed to and entered by the user. */
   userCode: string;
-  verificationEndpoint: string; // verificationUri
-  verificationEndpointComplete: string; // verificationUriComplete
+
+  /** The verification URI the user should visit to enter the user code (`verification_uri`). */
+  verificationEndpoint: string;
+
+  /** The verification URI with the user code pre-filled (`verification_uri_complete`). */
+  verificationEndpointComplete: string;
+
+  /** Discriminator ensuring this is not an error response. */
   error?: never;
+
+  /** Additional application-specific fields. */
   [key: string]: unknown;
 }
 
+/**
+ * The union of all possible outcomes from `handleAuthorizationEndpoint()`.
+ *
+ * - `POST / device_code`: Device and user codes were successfully generated.
+ * - `error`: A protocol error occurred.
+ *
+ * @template C - The device authorization endpoint context type.
+ */
 export type DeviceAuthorizationEndpointResponse<
   C extends DeviceAuthorizationEndpointContext = DeviceAuthorizationEndpointContext,
 > =
@@ -88,6 +165,14 @@ export type DeviceAuthorizationEndpointResponse<
     client?: OAuth2Client;
   };
 
+/**
+ * The result of `processAuthorization()`.
+ *
+ * - `device_code`: Device and user codes were successfully generated.
+ * - `error`: A protocol error occurred.
+ *
+ * @template C - The device authorization endpoint context type.
+ */
 export type DeviceAuthorizationProcessResponse<
   C extends DeviceAuthorizationEndpointContext = DeviceAuthorizationEndpointContext,
 > =
@@ -101,22 +186,48 @@ export type DeviceAuthorizationProcessResponse<
     client?: OAuth2Client;
   };
 
+/**
+ * The access token result shape for the device authorization grant.
+ * Extends the base result with optional refresh token, scope, and ID token fields.
+ */
 export interface DeviceAuthorizationAccessTokenResult extends OAuth2AccessTokenResult {
   /**
-   * Necessary to return the scope to the client.
+   * The scopes granted with this token. Returned to the client in the token response.
    */
   scope?: string[];
 
+  /** A refresh token to include in the token response, if applicable. */
   refreshToken?: string;
 
   /**
-   * For OpenID Connect, an ID token can also be returned from the token endpoint when exchanging the device code for tokens, and it should be included in the access token result so that it can be returned to the client in the token response.
+   * For OpenID Connect, an ID token can also be returned from the token endpoint when
+   * exchanging the device code for tokens, and it should be included in the access token
+   * result so that it can be returned to the client in the token response.
+   *
    * @see https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
    */
   idToken?: string;
 }
 
+/**
+ * An error result returned by `generateAccessToken()` during device code polling,
+ * representing one of the RFC 8628-defined polling error states.
+ *
+ * Return this instead of throwing to signal transient conditions (e.g. pending, slow down)
+ * that the device should handle by adjusting its polling behaviour.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8628#section-3.5
+ */
 export interface DeviceAuthorizationAccessTokenError extends OAuth2AccessTokenError {
+  /**
+   * The RFC 8628 error code describing why the token cannot be issued yet.
+   *
+   * - `authorization_pending`: The user has not yet completed authorization.
+   * - `slow_down`: The device is polling too frequently; increase the interval.
+   * - `expired_token`: The device code has expired; restart the flow.
+   * - `access_denied`: The user denied the authorization request.
+   * - `invalid_request`: The request is malformed.
+   */
   error:
     | "authorization_pending"
     | "slow_down"
@@ -125,6 +236,19 @@ export interface DeviceAuthorizationAccessTokenError extends OAuth2AccessTokenEr
     | "invalid_request";
 }
 
+/**
+ * A function that generates a device code and user code for a device authorization request.
+ *
+ * Should persist the codes along with the associated context (client, scope, etc.) for
+ * later lookup when the device polls the token endpoint or the user visits the verification URI.
+ *
+ * @template TContext - The device authorization endpoint context type.
+ *
+ * @param context - The validated device authorization endpoint context.
+ * @returns An object with `deviceCode` and `userCode`, or `undefined` on failure.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8628#section-3.2
+ */
 export interface GenerateDeviceCodeFunction<
   TContext extends DeviceAuthorizationEndpointContext = DeviceAuthorizationEndpointContext,
 > {
@@ -144,6 +268,12 @@ export interface GenerateDeviceCodeFunction<
     | undefined;
 }
 
+/**
+ * The result of `getDeviceAuthorizationEndpointContext()` - the first step of
+ * the device authorization endpoint pipeline.
+ *
+ * @template C - The device authorization endpoint context type.
+ */
 export type DeviceAuthorizationInitiationResponse<
   C extends DeviceAuthorizationEndpointContext = DeviceAuthorizationEndpointContext,
 > =
@@ -170,8 +300,19 @@ export interface DeviceAuthorizationModel extends
    */
   getClient: OAuth2GetClientFunction<DeviceAuthorizationTokenRequest | OAuth2RefreshTokenRequest>;
 
+  /**
+   * Retrieve and validate the client for a device authorization endpoint request.
+   * Should verify the `clientId` is registered and permitted to use this grant type.
+   */
   getClientForAuthentication: OAuth2GetClientFunction<DeviceAuthorizationEndpointRequest>;
 
+  /**
+   * Looks up the device code associated with a given user code, as entered by the
+   * end-user at the verification URI.
+   *
+   * @param userCode - The user code entered by the end-user.
+   * @returns The associated `deviceCode` and `client`, or `undefined` if the user code is invalid.
+   */
   verifyUserCode: (userCode: string) =>
     | Promise<
       | { deviceCode: string; client: OAuth2Client }
@@ -180,8 +321,17 @@ export interface DeviceAuthorizationModel extends
     | { deviceCode: string; client: OAuth2Client }
     | undefined;
 
+  /**
+   * Generates a device code and user code for the given device authorization context.
+   * Should persist both codes for later lookup.
+   * See {@link GenerateDeviceCodeFunction} for the full contract.
+   */
   generateDeviceCode: GenerateDeviceCodeFunction<DeviceAuthorizationEndpointContext>;
 
+  /**
+   * Generates a new access token from a refresh token.
+   * Optional - only implement if the flow supports refresh token grants.
+   */
   generateAccessTokenFromRefreshToken?: OAuth2GenerateAccessTokenFromRefreshTokenFunction<
     DeviceAuthorizationAccessTokenResult
   >;
@@ -191,11 +341,28 @@ export interface DeviceAuthorizationModel extends
  * Options for configuring the device authorization grant flow.
  */
 export interface DeviceAuthorizationFlowOptions extends OAuth2FlowOptions {
+  /** The model implementation providing client lookup, code generation, and token generation. */
   model: DeviceAuthorizationModel;
+
+  /** The URL of the device authorization endpoint. Defaults to `"/device_authorization"`. */
   authorizationEndpoint?: string;
+
+  /** The URL of the user code verification endpoint. Defaults to `"/verify_user_code"`. */
   verificationEndpoint?: string;
 }
 
+/**
+ * Abstract base class for the Device Authorization flow.
+ *
+ * Provides the full request handling pipeline for the device authorization endpoint
+ * (`processAuthorization`, `handleAuthorizationEndpoint`) and the token endpoint
+ * (`initiateToken`, `token`), as well as a `verifyUserCode()` helper for the
+ * verification endpoint.
+ *
+ * Subclasses must implement `toOpenAPISecurityScheme()`.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8628
+ */
 export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
   implements DeviceAuthorizationGrant {
   readonly grantType = "urn:ietf:params:oauth:grant-type:device_code" as const;
@@ -216,20 +383,36 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
     }
   }
 
+  /**
+   * Sets the URL of the device authorization endpoint.
+   *
+   * @param url - The device authorization endpoint URL (absolute or relative).
+   */
   setAuthorizationEndpoint(url: string): this {
     this.authorizationEndpoint = url;
     return this;
   }
 
+  /**
+   * Returns the URL of the device authorization endpoint.
+   */
   getAuthorizationEndpoint(): string {
     return this.authorizationEndpoint;
   }
 
+  /**
+   * Sets the URL of the user code verification endpoint.
+   *
+   * @param url - The verification endpoint URL (absolute or relative).
+   */
   setVerificationEndpoint(url: string): this {
     this.verificationEndpoint = url;
     return this;
   }
 
+  /**
+   * Returns the URL of the user code verification endpoint.
+   */
   getVerificationEndpoint(): string {
     return this.verificationEndpoint;
   }
@@ -309,6 +492,15 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
     };
   }
 
+  /**
+   * Processes a `POST` request to the device authorization endpoint.
+   *
+   * Validates the client, resolves scopes, and calls `model.generateDeviceCode()`.
+   * Returns the device code, user code, and verification endpoints on success.
+   *
+   * @param request - The incoming `POST` request to the device authorization endpoint.
+   * @returns The process response - device codes on success, or an error.
+   */
   async processAuthorization(
     request: Request,
   ): Promise<DeviceAuthorizationProcessResponse> {
@@ -356,6 +548,15 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
     };
   }
 
+  /**
+   * Unified handler for `POST` requests to the device authorization endpoint.
+   *
+   * Delegates to `processAuthorization()` and wraps the result with the HTTP method.
+   * Returns an error response for any method other than `POST`.
+   *
+   * @param request - The incoming HTTP request to the device authorization endpoint.
+   * @returns The endpoint response - a discriminated union of all possible outcomes.
+   */
   async handleAuthorizationEndpoint(
     request: Request,
   ): Promise<DeviceAuthorizationEndpointResponse> {
@@ -378,14 +579,34 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
     };
   }
 
+  /**
+   * Verifies a user code at the verification endpoint.
+   *
+   * Accepts either the raw user code string or an HTTP request with a `user_code`
+   * query parameter. Delegates to `model.verifyUserCode()`.
+   *
+   * @param userCode - The user code string entered by the end-user.
+   * @returns The associated device code and client on success, or a failure with an error.
+   */
   async verifyUserCode(userCode: string): Promise<
     | { success: true; deviceCode: string; client: OAuth2Client }
     | { success: false; error: OAuth2Error }
   >;
+
+  /**
+   * Verifies a user code submitted via an HTTP request to the verification endpoint.
+   *
+   * Extracts the `user_code` from the request's query string and delegates to
+   * `model.verifyUserCode()`.
+   *
+   * @param request - The incoming HTTP request with a `user_code` query parameter.
+   * @returns The associated device code and client on success, or a failure with an error.
+   */
   async verifyUserCode(request: Request): Promise<
     | { success: true; deviceCode: string; client: OAuth2Client }
     | { success: false; error: OAuth2Error }
   >;
+
   async verifyUserCode(request: Request | string): Promise<
     | { success: true; deviceCode: string; client: OAuth2Client }
     | { success: false; error: OAuth2Error }
@@ -421,6 +642,16 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
     };
   }
 
+  /**
+   * Validates the token endpoint request (both device code and refresh token grant types)
+   * and returns the resolved grant context without yet generating tokens.
+   *
+   * Useful when you need to inspect the context before deciding how to generate tokens.
+   * Most callers should use `token()` directly instead.
+   *
+   * @param request - The incoming token endpoint HTTP request.
+   * @returns The grant context on success, or a failure with an error.
+   */
   async initiateToken(request: Request): Promise<
     | {
       success: true;
@@ -600,6 +831,16 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
     return { success: false, error };
   }
 
+  /**
+   * Handles a token endpoint request for the device code grant (or refresh token grant).
+   *
+   * Validates the device code and calls `model.generateAccessToken()`. For device code
+   * polling, maps RFC 8628 error codes (e.g. `authorization_pending`, `slow_down`) to
+   * the appropriate OAuth 2.0 error responses.
+   *
+   * @param request - The incoming token endpoint HTTP request.
+   * @returns A token response with the generated access token, or a failure with an error.
+   */
   async token(request: Request): Promise<OAuth2FlowTokenResponse> {
     const initiationResult = await this.initiateToken(request);
 
@@ -707,7 +948,21 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
   }
 }
 
+/**
+ * Concrete Device Authorization flow implementation.
+ *
+ * Extends {@link AbstractDeviceAuthorizationFlow} with an OpenAPI security scheme
+ * definition for the `deviceAuthorization` OAuth 2.0 flow type.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8628
+ */
 export class DeviceAuthorizationFlow extends AbstractDeviceAuthorizationFlow {
+  /**
+   * Returns the OpenAPI security scheme definition for this flow.
+   * Uses the `oauth2` scheme type with a `deviceAuthorization` flow.
+   *
+   * @returns An object keyed by the security scheme name with the scheme definition.
+   */
   toOpenAPISecurityScheme(): Record<
     string,
     {

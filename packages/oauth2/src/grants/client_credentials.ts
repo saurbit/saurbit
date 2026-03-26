@@ -1,4 +1,10 @@
-// grants/client_credentials.ts
+/**
+ * @module
+ *
+ * Implements the OAuth 2.0 Client Credentials grant type.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc6749#section-4.4
+ */
 
 import { ClientAuthMethod } from "../client_auth_methods/types.ts";
 import {
@@ -33,10 +39,19 @@ export interface ClientCredentialsGrant {
  * to generate tokens with appropriate scope, lifetimes, etc.
  */
 export interface ClientCredentialsGrantContext {
+  /** The authenticated client. */
   client: OAuth2Client;
+
+  /** The grant type identifier. Always `"client_credentials"`. */
   grantType: string;
+
+  /** The validated scopes granted to the client for this token. */
   scope: string[];
+
+  /** The token type prefix (e.g. `"Bearer"`, `"DPoP"`). */
   tokenType: string;
+
+  /** The access token lifetime in seconds. */
   accessTokenLifetime: number;
 }
 
@@ -44,9 +59,16 @@ export interface ClientCredentialsGrantContext {
  * Raw token request parameters for client credentials grant.
  */
 export interface ClientCredentialsTokenRequest {
+  /** The client identifier extracted from the request. */
   clientId: string;
+
+  /** The client secret extracted from the request. */
   clientSecret: string;
+
+  /** The grant type value from the request body. Should be `"client_credentials"`. */
   grantType: string;
+
+  /** The requested scopes, if provided in the request body. */
   scope?: string[];
 }
 
@@ -64,6 +86,15 @@ export interface ClientCredentialsFlowOptions extends OAuth2FlowOptions {
   model: ClientCredentialsModel;
 }
 
+/**
+ * Abstract base class for the Client Credentials flow.
+ *
+ * Provides the full `token()` request handling pipeline - content type parsing,
+ * grant type validation, client authentication, scope validation, and token generation.
+ * Subclasses must implement `toOpenAPISecurityScheme()`.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc6749#section-4.4
+ */
 export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
   implements ClientCredentialsGrant {
   readonly grantType = "client_credentials" as const;
@@ -85,10 +116,12 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
   }
 
   /**
-   * Handle a token request for the client credentials grant type.
+   * Handles a token request for the client credentials grant type.
    * Validates the client credentials and generates an access token if valid.
    * Returns an appropriate error response if validation fails.
-   * @param request The incoming HTTP request.
+   *
+   * @param request - The incoming HTTP request.
+   * @returns A token response with the generated access token, or a failure with an error.
    */
   async token(request: Request): Promise<OAuth2FlowTokenResponse> {
     const req = request.clone();
@@ -231,7 +264,21 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
   }
 }
 
+/**
+ * Concrete Client Credentials flow implementation.
+ *
+ * Extends {@link AbstractClientCredentialsFlow} with an OpenAPI security scheme
+ * definition for the `clientCredentials` OAuth 2.0 flow type.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc6749#section-4.4
+ */
 export class ClientCredentialsFlow extends AbstractClientCredentialsFlow {
+  /**
+   * Returns the OpenAPI security scheme definition for this flow.
+   * Uses the `oauth2` scheme type with a `clientCredentials` flow.
+   *
+   * @returns An object keyed by the security scheme name with the scheme definition.
+   */
   toOpenAPISecurityScheme(): Record<
     string,
     {
