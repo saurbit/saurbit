@@ -1,3 +1,13 @@
+/**
+ * @module
+ *
+ * Implements the OpenID Connect Authorization Code flow, extending the base
+ * OAuth 2.0 Authorization Code grant with OIDC-specific request parameters,
+ * ID token enforcement, UserInfo support, and a discovery document.
+ *
+ * @see https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth
+ */
+
 import { InvalidRequestError, ServerError, UnsupportedResponseTypeError } from "../errors.ts";
 import {
   OAuth2FlowTokenResponse,
@@ -23,20 +33,6 @@ import {
 import { getOriginFromUrl, normalizeUrl } from "../utils/url_tools.ts";
 import { OIDCFlow, OIDCFlowExtendedOptions, OIDCUserInfo } from "./types.ts";
 
-/*---
-OIDC requires:
-- by library:
-  - ID Token - implemented by the model's generateAccessToken() method and included in the token response - DONE
-  - Discovery document (well-known OpenID configuration) - implemented by the flow and can be customized with openIdConfiguration option - DONE
-  - openid scope (profile, email, address, phone are optional but standardized) - enforced by the flow and included in the discovery document - DONE
-
-- by end developer:
-  - UserInfo endpoint - can be implemented by the model's getUserInfo method and included in the discovery document
-  - Standard claims (at least sub) - to implement by the end developer to include in the ID token, in UserInfo response and optionally in the model's getUserInfo method
-  - JWKS endpoint (JSON Web Key Set) - can be implemented by the end developer and included in the discovery document
-  - nonce parameter for authorization code flow with response_type=code id_token - can be implemented by the model and included in the discovery document, but it's optional for authorization code flow without id_token in the response type
----*/
-
 function isPrompt(value?: string | null): value is "none" | "login" | "consent" | "select_account" {
   return value === "none" || value === "login" || value === "consent" || value === "select_account";
 }
@@ -45,118 +41,198 @@ function isDisplay(value?: string | null): value is "page" | "popup" | "touch" |
   return value === "page" || value === "popup" || value === "touch" || value === "wap";
 }
 
+/**
+ * OIDC-specific authentication request parameters that extend the base OAuth 2.0
+ * authorization request. These correspond to the additional query parameters
+ * defined by the OpenID Connect Core specification.
+ *
+ * @see https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+ */
 export interface OIDCAuthenticationRequestParams {
   /**
-   * The `nonce` parameter is a string value used to associate a client session with an ID token, and to mitigate replay attacks.
-   * It is included in the authorization request and should be returned in the ID token.
+   * The `nonce` parameter is a string value used to associate a client session with an ID token,
+   * and to mitigate replay attacks. It is included in the authorization request and should be
+   * returned in the ID token.
    */
   nonce?: string;
 
   /**
-   * The `display` parameter is used to specify how the authorization server should display the authentication and consent user interface. It allows clients to optimize the user experience for different device types and contexts. The `display` parameter can take the following values:
-   * - `page`: The authorization server should display the authentication and consent user interface in a full-page view. This is the default behavior if the `display` parameter is not specified.
-   * - `popup`: The authorization server should display the authentication and consent user interface in a popup window. This can be used to provide a more seamless user experience without navigating away from the client's application.
-   * - `touch`: The authorization server should display a user interface optimized for touch devices, such as smartphones and tablets. This can help improve usability on mobile devices.
-   * - `wap`: The authorization server should display a user interface optimized for feature phones and other devices with limited capabilities. This can help ensure that users on older or less capable devices can still authenticate successfully.
-   * By including the `display` parameter in the authorization request, clients can enhance the user experience by providing an appropriate interface for the user's device and context. The `display` parameter is part of the OpenID Connect specification and can be included in the authorization request to optimize the authentication and consent user interface for different scenarios.
+   * The `display` parameter specifies how the authorization server should display the
+   * authentication and consent UI:
+   * - `page`: Full-page view (default).
+   * - `popup`: Popup window.
+   * - `touch`: Optimized for touch devices.
+   * - `wap`: Optimized for feature phones.
    */
   display?: "page" | "popup" | "touch" | "wap";
 
   /**
-   * The `prompt` parameter is used to specify whether the authorization server should prompt the user for re-authentication and/or consent. It can take the following values:
-   * - `none`: The authorization server must not display any authentication or consent user interface pages. If the user is not already authenticated and has not previously given consent, the authorization request will fail with an error.
-   * - `login`: The authorization server should prompt the user to re-authenticate, even if they are already authenticated. This can be used to ensure that the user is actively involved in the authentication process.
-   * - `consent`: The authorization server should prompt the user for consent before issuing tokens. This can be used to ensure that the user is aware of and agrees to the scopes being requested by the client.
-   * - `select_account`: The authorization server should prompt the user to select an account if they are authenticated with multiple accounts. This can be used to allow users to choose which account they want to use for the authentication request.
-   * Multiple values can be included in a space-separated list if more than one behavior is desired (e.g., `prompt=login consent` would require the user to both re-authenticate and provide consent). The `prompt` parameter is an important part of the OpenID Connect authentication flow, as it allows clients to control the user experience and ensure that users are properly authenticated and have given consent for the requested scopes.
+   * The `prompt` parameter controls whether the authorization server prompts the user
+   * for re-authentication and/or consent:
+   * - `none`: Must not display any UI; fails if user is not already authenticated.
+   * - `login`: Prompt the user to re-authenticate.
+   * - `consent`: Prompt the user for consent before issuing tokens.
+   * - `select_account`: Prompt the user to select an account.
+   *
+   * Multiple values may be combined (e.g. `["login", "consent"]`).
    */
   prompt?: ("none" | "login" | "consent" | "select_account")[];
 
   /**
-   * The `max_age` parameter specifies the maximum age of the user's authentication in seconds. If the user's authentication is older than the specified time, the authorization server should prompt the user to re-authenticate. This parameter can be used by clients to ensure that users are recently authenticated, which can be important for security-sensitive applications. For example, a client might set `max_age=3600` to require users to re-authenticate if their last authentication was more than an hour ago. The `max_age` parameter is part of the OpenID Connect specification and can be included in the authorization request to enhance security by enforcing re-authentication when necessary.
+   * The `max_age` parameter specifies the maximum age in seconds of the user's authentication.
+   * If the user's last authentication is older than this value, the server should prompt
+   * re-authentication.
    */
   maxAge?: number;
 
   /**
-   * The `ui_locales` parameter is used by clients to specify their preferred languages and scripts for the user interface of the authorization server. It is a space-separated list of BCP47 language tag values (e.g., `en`, `en-US`, `fr`, `fr-CA`, `zh-Hans`, `zh-Hant`). By including this parameter in the authorization request, clients can indicate to the authorization server which languages and scripts they prefer for displaying authentication and consent user interfaces. This allows the authorization server to provide a localized experience for users, improving usability and accessibility for a global audience. The `ui_locales` parameter is part of the OpenID Connect specification and can be included in the authorization request to enhance localization and user experience.
+   * The `ui_locales` parameter specifies the client's preferred languages and scripts
+   * for the authorization server UI, as a list of BCP47 language tags
+   * (e.g. `["en-US", "fr"]`).
    */
   uiLocales?: string[];
 
   /**
-   * The `id_token_hint` parameter is used to pass an existing ID token as a hint to the authorization server about the user's current authentication state. This can help streamline the authentication process by allowing the authorization server to recognize that the user is already authenticated and potentially skip additional authentication steps. The `id_token_hint` parameter is typically included in the authorization request when the client has an existing ID token for the user, such as from a previous authentication session. By providing this hint, the client can improve the user experience by reducing unnecessary prompts for authentication, while still allowing the authorization server to enforce security policies as needed. The `id_token_hint` parameter is part of the OpenID Connect specification and can be included in the authorization request to enhance user experience and streamline authentication.
+   * The `id_token_hint` parameter passes an existing ID token as a hint to the authorization
+   * server about the user's current authentication state, potentially skipping re-authentication.
    */
   idTokenHint?: string;
 
   /**
-   * The `login_hint` parameter is used to provide a hint to the authorization server about the user's identifier, such as their email address or username. This can help pre-fill login forms and improve the user experience by reducing the amount of information the user needs to enter during authentication. The `login_hint` parameter is typically included in the authorization request when the client has some information about the user that can be used to assist with authentication. By providing this hint, the client can enhance the user experience while still allowing the authorization server to enforce security policies and ensure proper authentication. The `login_hint` parameter is part of the OpenID Connect specification and can be included in the authorization request to improve user experience during authentication.
+   * The `login_hint` parameter provides a hint to the authorization server about the user's
+   * identifier (e.g. email address or username) to pre-fill login forms.
    */
   loginHint?: string;
 
   /**
-   * The `acr_values` parameter allows clients to specify desired Authentication Class References (ACR) values, which can be used by the authorization server to determine the appropriate level of authentication required for the request. ACR values are identifiers that represent different authentication methods or levels of assurance (e.g., password-based authentication, multi-factor authentication, biometric authentication). By including the `acr_values` parameter in the authorization request, clients can indicate their preferences for the authentication methods that should be used to authenticate the user. The authorization server can then use this information to select an appropriate authentication method based on the client's preferences and the user's available authentication options. The `acr_values` parameter is part of the OpenID Connect specification and can be included in the authorization request to enhance security by allowing clients to specify their desired authentication requirements.
+   * The `acr_values` parameter specifies desired Authentication Class Reference values,
+   * indicating the authentication methods or levels of assurance the client requires.
    */
   acrValues?: string[];
 }
 
+/**
+ * Raw OIDC authorization endpoint request parameters, combining the base OAuth 2.0
+ * authorization endpoint request with OIDC-specific parameters.
+ */
 export interface OIDCAuthorizationCodeEndpointRequest
   extends AuthorizationCodeEndpointRequest, OIDCAuthenticationRequestParams {
 }
 
 /**
- * Validation context for OpenID Connect authorization code flow.
+ * Validation context for the OpenID Connect authorization code flow,
+ * passed to `getUserForAuthentication()` and `generateAuthorizationCode()`.
+ *
+ * Extends the base authorization code endpoint context with OIDC-specific parameters.
+ *
  * @see https://openid.net/specs/openid-connect-core-1_0.html#AuthorizationEndpoint
  */
 export interface OIDCAuthorizationCodeEndpointContext
   extends AuthorizationCodeEndpointContext, OIDCAuthenticationRequestParams {
 }
 
+/**
+ * The result of `initiateAuthorization()` for the OIDC Authorization Code flow.
+ * On success, contains the validated {@link OIDCAuthorizationCodeEndpointContext}.
+ */
 export type OIDCAuthorizationCodeInitiationResponse = AuthorizationCodeInitiationResponse<
   OIDCAuthorizationCodeEndpointContext
 >;
+
+/**
+ * The result of `processAuthorization()` for the OIDC Authorization Code flow.
+ * A discriminated union of all possible outcomes after the user submits credentials.
+ */
 export type OIDCAuthorizationCodeProcessResponse = AuthorizationCodeProcessResponse<
   OIDCAuthorizationCodeEndpointContext
 >;
 
+/**
+ * The union of all possible outcomes from `handleAuthorizationEndpoint()` for the
+ * OIDC Authorization Code flow.
+ */
 export type OIDCAuthorizationCodeEndpointResponse = AuthorizationCodeEndpointResponse<
   OIDCAuthorizationCodeEndpointContext
 >;
 
+/**
+ * The access token result shape for the OIDC Authorization Code flow.
+ * Extends the base result to make `idToken` required, as the OpenID Connect
+ * specification requires an ID token in the token response.
+ *
+ * @see https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
+ */
 export interface OIDCAuthorizationCodeAccessTokenResult extends AuthorizationCodeAccessTokenResult {
   /**
-   * For OpenID Connect, an ID token can also be returned from the token endpoint when exchanging the authorization code for tokens, and it should be included in the access token result so that it can be returned to the client in the token response.
+   * The ID token issued by the authorization server for this authentication.
+   * Required for the OIDC Authorization Code flow token response.
+   *
    * @see https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
    */
   idToken: string;
 }
 
+/**
+ * Model interface for the OIDC Authorization Code flow.
+ *
+ * Extends {@link AuthorizationCodeModel} to use OIDC-specific context and request types,
+ * and adds an optional `getUserInfo()` method for the UserInfo endpoint.
+ *
+ * @template AuthReqData - The shape of user-submitted data at the authorization endpoint.
+ */
 export interface OIDCAuthorizationCodeModel<
   AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > extends AuthorizationCodeModel<AuthReqData> {
+  /**
+   * Retrieves and validates the client for an OIDC authorization endpoint request.
+   * Should verify `clientId`, `redirectUri`, and any requested scopes.
+   */
   getClientForAuthentication: OAuth2GetClientFunction<OIDCAuthorizationCodeEndpointRequest>;
 
+  /**
+   * Generates an access token (and required ID token) for the authenticated grant context.
+   * The returned result MUST include an `idToken` for OIDC compliance.
+   */
   generateAccessToken: OAuth2GenerateAccessTokenFunction<
     AuthorizationCodeGrantContext,
     OIDCAuthorizationCodeAccessTokenResult
   >;
 
+  /**
+   * Generates a new access token from a refresh token.
+   * Optional - only implement if the flow supports refresh token grants.
+   * The ID token is optional in refresh token responses per the OIDC specification.
+   */
   generateAccessTokenFromRefreshToken?: OAuth2GenerateAccessTokenFromRefreshTokenFunction<
     AuthorizationCodeAccessTokenResult
   >;
 
+  /**
+   * Authenticates the end-user from the submitted OIDC authorization request data.
+   * Receives the full OIDC context including `nonce`, `prompt`, `max_age`, etc.
+   */
   getUserForAuthentication: GetUserForAuthenticationFunction<
     OIDCAuthorizationCodeEndpointContext,
     AuthReqData
   >;
 
+  /**
+   * Generates (or denies) an authorization code for the authenticated user.
+   * Receives the full OIDC context so the code can be associated with OIDC parameters
+   * (e.g. `nonce`) for later inclusion in the ID token.
+   */
   generateAuthorizationCode: GenerateAuthorizationCodeFunction<
     OIDCAuthorizationCodeEndpointContext
   >;
 
   /**
    * Retrieves the user information associated with the given access token.
-   * This method can be implemented to provide user information
-   * for the UserInfo endpoint in the OpenID Connect flow.
-   * @param accessToken The access token for which to retrieve user information.
+   * Implement to support the UserInfo endpoint in the OpenID Connect flow.
+   *
+   * @param accessToken - The access token for which to retrieve user information.
+   * @returns The UserInfo claims, or `undefined` if not supported.
+   *
+   * @see https://openid.net/specs/openid-connect-core-1_0.html#UserInfo
    */
   getUserInfo?: (
     accessToken: string,
@@ -164,24 +240,52 @@ export interface OIDCAuthorizationCodeModel<
 }
 
 /**
- * Options for configuring the OpenID Connect authorization code flow.
+ * Options for configuring the OpenID Connect Authorization Code flow.
  */
 export interface OIDCAuthorizationCodeFlowOptions<
   AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > extends AuthorizationCodeFlowOptions<AuthReqData>, OIDCFlowExtendedOptions {
+  /** The OIDC model implementation. */
   model: OIDCAuthorizationCodeModel<AuthReqData>;
+
   /**
-   * The URL where the OpenID Provider's JSON Web Key Set (JWKS) can be found.
-   * This is used for validating tokens issued by the provider. If not provided, it will be derived from the discovery document.
-   * It can be an absolute URL or a relative path (e.g., /jwks) which will be resolved against the discovery URL's origin.
+   * The URL of the JWKS endpoint used for token validation.
+   * Can be an absolute URL or a relative path (e.g. `"/jwks"`) resolved against
+   * the discovery URL's origin.
    */
   jwksEndpoint: string;
 
+  /**
+   * The URL of the UserInfo endpoint.
+   * Included in the discovery document if provided.
+   *
+   * @see https://openid.net/specs/openid-connect-core-1_0.html#UserInfo
+   */
   userInfoEndpoint?: string;
 
+  /**
+   * The URL of the dynamic client registration endpoint.
+   * Included in the discovery document if provided.
+   *
+   * @see https://openid.net/specs/openid-connect-registration-1_0.html
+   */
   registrationEndpoint?: string;
 }
 
+/**
+ * OpenID Connect Authorization Code flow implementation.
+ *
+ * Extends {@link AbstractAuthorizationCodeFlow} with:
+ * - OIDC-specific request parameter parsing (`nonce`, `prompt`, `max_age`, etc.)
+ * - Enforcement of the `openid` scope
+ * - ID token requirement in the token response
+ * - OpenID Connect discovery document generation
+ * - Optional UserInfo endpoint support
+ *
+ * @template AuthReqData - The shape of user-submitted data at the authorization endpoint.
+ *
+ * @see https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth
+ */
 export class OIDCAuthorizationCodeFlow<
   AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
 > extends AbstractAuthorizationCodeFlow<AuthReqData> implements OIDCFlow {
@@ -208,26 +312,51 @@ export class OIDCAuthorizationCodeFlow<
     this.openIdConfiguration = openIdConfiguration;
   }
 
+  /**
+   * Returns the URL of the OpenID Connect discovery document.
+   */
   getDiscoveryUrl(): string {
     return this.discoveryUrl;
   }
 
+  /**
+   * Returns the URL of the JWKS endpoint.
+   */
   getJwksEndpoint(): string {
     return this.jwksEndpoint;
   }
 
+  /**
+   * Returns the static OpenID configuration overrides merged into the discovery document,
+   * or `undefined` if none were set.
+   */
   getOpenIdConfiguration(): Record<string, string | string[] | undefined> | undefined {
     return this.openIdConfiguration;
   }
 
+  /**
+   * Returns the URL of the UserInfo endpoint, or `undefined` if not configured.
+   */
   getUserInfoEndpoint(): string | undefined {
     return this.userInfoEndpoint;
   }
 
+  /**
+   * Returns the URL of the dynamic client registration endpoint, or `undefined` if not configured.
+   */
   getRegistrationEndpoint(): string | undefined {
     return this.registrationEndpoint;
   }
 
+  /**
+   * Retrieves the UserInfo claims for the given access token by delegating to
+   * `model.getUserInfo()`. Returns `undefined` if the model does not implement `getUserInfo`.
+   *
+   * @param accessToken - The access token for which to retrieve user information.
+   * @returns The UserInfo claims, or `undefined`.
+   *
+   * @see https://openid.net/specs/openid-connect-core-1_0.html#UserInfo
+   */
   async getUserInfo(accessToken: string): Promise<OIDCUserInfo | undefined> {
     const model = this.model as OIDCAuthorizationCodeModel<AuthReqData>;
     if (typeof model.getUserInfo === "function") {
@@ -236,6 +365,12 @@ export class OIDCAuthorizationCodeFlow<
     return undefined;
   }
 
+  /**
+   * Returns the OpenAPI security scheme definition for this flow.
+   * Uses the `openIdConnect` scheme type pointing to the discovery URL.
+   *
+   * @returns An object keyed by the security scheme name with the scheme definition.
+   */
   toOpenAPISecurityScheme(): Record<
     string,
     { type: "openIdConnect"; description?: string; openIdConnectUrl: string }
@@ -250,10 +385,16 @@ export class OIDCAuthorizationCodeFlow<
   }
 
   /**
-   * Retrieves the OpenID Connect discovery configuration.
-   * @param req - Optional request object to help determine the full URL for relative endpoints in the discovery document. If not provided, relative endpoints will be resolved against the discovery URL's origin.
-   * @returns The OpenID Connect discovery configuration.
-   * @link https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
+   * Retrieves the OpenID Connect discovery configuration document.
+   *
+   * Builds the standard provider metadata fields from the flow's configuration and
+   * merges in any static overrides set via `openIdConfiguration`. Relative endpoint
+   * URLs are resolved against the request's origin (or the discovery URL's origin if
+   * no request is provided).
+   *
+   * @param req - Optional request used to determine the full base URL for relative endpoints.
+   * @returns The OpenID Connect discovery document fields.
+   * @see https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
    */
   getDiscoveryConfiguration(req?: Request): Record<string, string | string[] | undefined> {
     const supported = this.getTokenEndpointAuthMethods();
@@ -470,12 +611,30 @@ export class OIDCAuthorizationCodeFlow<
     };
   }
 
+  /**
+   * Validates an incoming OIDC authorization endpoint `GET` request and returns the
+   * OIDC authorization context including all OIDC-specific parameters.
+   *
+   * Enforces that the `openid` scope is present.
+   *
+   * @param request - The incoming `GET` request to the authorization endpoint.
+   * @returns The initiation response with the OIDC context, or a non-redirectable error.
+   */
   override async initiateAuthorization(
     request: Request,
   ): Promise<OIDCAuthorizationCodeInitiationResponse> {
     return await super.initiateAuthorization(request);
   }
 
+  /**
+   * Processes the user's submitted credentials at the OIDC authorization endpoint.
+   *
+   * Delegates to the base implementation with the OIDC-typed context.
+   *
+   * @param request - The incoming HTTP request to the authorization endpoint.
+   * @param reqData - The user-submitted data (e.g. login form fields).
+   * @returns The OIDC process response - code, continue, unauthenticated, or error.
+   */
   override async processAuthorization(
     request: Request,
     reqData: AuthReqData,
@@ -483,6 +642,15 @@ export class OIDCAuthorizationCodeFlow<
     return await super.processAuthorization(request, reqData);
   }
 
+  /**
+   * Unified handler for `GET` and `POST` requests to the OIDC authorization endpoint.
+   *
+   * Delegates to `initiateAuthorization()` (`GET`) or `processAuthorization()` (`POST`).
+   *
+   * @param request - The incoming HTTP request to the authorization endpoint.
+   * @param reqData - The user-submitted data (used for `POST` requests only).
+   * @returns The OIDC endpoint response - a discriminated union of all possible outcomes.
+   */
   override async handleAuthorizationEndpoint(
     request: Request,
     reqData: AuthReqData,
@@ -490,6 +658,12 @@ export class OIDCAuthorizationCodeFlow<
     return await super.handleAuthorizationEndpoint(request, reqData);
   }
 
+  /**
+   * Returns the scopes for this flow, always ensuring the `openid` scope is present
+   * as required by the OpenID Connect specification.
+   *
+   * @returns The scopes map with `openid` guaranteed to be included.
+   */
   override getScopes(): Record<string, string> | undefined {
     // Ensure that the openid scope is always included for OpenID Connect flows
     const baseScopes = super.getScopes() || {};
@@ -499,6 +673,16 @@ export class OIDCAuthorizationCodeFlow<
     };
   }
 
+  /**
+   * Handles a token endpoint request for the OIDC Authorization Code flow.
+   *
+   * Enforces OIDC compliance by verifying that the `openid` scope is present and
+   * that the token response includes an ID token. For refresh token grants, the ID
+   * token is optional per the OIDC specification.
+   *
+   * @param request - The incoming token endpoint HTTP request.
+   * @returns A token response with the access token and ID token, or a failure with an error.
+   */
   override async token(request: Request): Promise<OAuth2FlowTokenResponse> {
     const r = await super.token(request);
     if (r.success) {

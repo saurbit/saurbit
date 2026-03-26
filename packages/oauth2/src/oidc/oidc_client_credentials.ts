@@ -1,3 +1,12 @@
+/**
+ * @module oidc_client_credentials
+ * @description OpenID Connect extension of the Client Credentials grant flow.
+ * Adds OIDC discovery document generation and `openIdConnect` security scheme
+ * support to the base {@link AbstractClientCredentialsFlow}.
+ * Note: the Client Credentials flow is machine-to-machine and does not involve
+ * end-user authentication, so ID tokens and UserInfo endpoints are typically not used.
+ */
+
 import {
   AbstractClientCredentialsFlow,
   ClientCredentialsFlowOptions,
@@ -6,17 +15,34 @@ import { getOriginFromUrl, normalizeUrl } from "../utils/url_tools.ts";
 import { OIDCFlow, OIDCFlowExtendedOptions } from "./types.ts";
 
 /**
- * Options for configuring the client credentials grant flow.
+ * Configuration options for the OIDC Client Credentials flow.
+ * Combines the base client credentials options with OIDC-specific options
+ * such as the discovery URL, optional JWKS endpoint, and static OpenID configuration overrides.
  */
 export interface OIDCClientCredentialsFlowOptions
   extends ClientCredentialsFlowOptions, OIDCFlowExtendedOptions {
 }
 
+/**
+ * OpenID Connect Client Credentials flow implementation.
+ *
+ * Extends {@link AbstractClientCredentialsFlow} with OIDC capabilities:
+ * - Generates an OIDC discovery document via `getDiscoveryConfiguration()`.
+ * - Implements `toOpenAPISecurityScheme()` with the `openIdConnect` scheme type.
+ *
+ * Because the Client Credentials grant is purely machine-to-machine, this flow
+ * does not issue ID tokens or expose a UserInfo endpoint. The discovery document
+ * is provided for completeness and interoperability with OIDC-aware clients.
+ */
 export class OIDCClientCredentialsFlow extends AbstractClientCredentialsFlow implements OIDCFlow {
   protected discoveryUrl: string;
   protected jwksEndpoint?: string;
   protected openIdConfiguration?: Record<string, string | string[] | undefined>;
 
+  /**
+   * Creates a new `OIDCClientCredentialsFlow` instance.
+   * @param options - Configuration options including the discovery URL and optional JWKS endpoint.
+   */
   constructor(options: OIDCClientCredentialsFlowOptions) {
     const { discoveryUrl, jwksEndpoint, openIdConfiguration, ...baseOptions } = options;
     super(baseOptions);
@@ -25,18 +51,37 @@ export class OIDCClientCredentialsFlow extends AbstractClientCredentialsFlow imp
     this.openIdConfiguration = openIdConfiguration;
   }
 
+  /**
+   * Returns the OIDC discovery document URL (the `/.well-known/openid-configuration` endpoint).
+   * @returns The discovery URL as configured.
+   */
   getDiscoveryUrl(): string {
     return this.discoveryUrl;
   }
 
+  /**
+   * Returns the JWKS endpoint URL used for token validation, if configured.
+   * May be an absolute URL or a relative path resolved against the discovery URL's origin.
+   * @returns The JWKS endpoint URL, or `undefined` if not set.
+   */
   getJwksEndpoint(): string | undefined {
     return this.jwksEndpoint;
   }
 
+  /**
+   * Returns any static OpenID Connect configuration overrides that will be merged into
+   * the discovery document produced by {@link getDiscoveryConfiguration}.
+   * @returns The static OpenID configuration map, or `undefined` if none was provided.
+   */
   getOpenIdConfiguration(): Record<string, string | string[] | undefined> | undefined {
     return this.openIdConfiguration;
   }
 
+  /**
+   * Returns the OpenAPI security scheme descriptor for this flow using the
+   * `openIdConnect` scheme type, referencing the discovery URL.
+   * @returns A record keyed by the security scheme name.
+   */
   toOpenAPISecurityScheme(): Record<
     string,
     { type: "openIdConnect"; description?: string; openIdConnectUrl: string }
@@ -51,10 +96,16 @@ export class OIDCClientCredentialsFlow extends AbstractClientCredentialsFlow imp
   }
 
   /**
-   * Retrieves the OpenID Connect discovery configuration.
-   * @param req - Optional request object to help determine the full URL for relative endpoints in the discovery document. If not provided, relative endpoints will be resolved against the discovery URL's origin.
-   * @returns The OpenID Connect discovery configuration.
-   * @link https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
+   * Retrieves the OpenID Connect discovery configuration document.
+   *
+   * Builds the standard provider metadata fields from the flow's configuration and
+   * merges in any static overrides set via `openIdConfiguration`. Relative endpoint
+   * URLs are resolved against the request's origin (or the discovery URL's origin if
+   * no request is provided).
+   *
+   * @param req - Optional request used to determine the full base URL for relative endpoints.
+   * @returns The OpenID Connect discovery document fields.
+   * @see https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
    */
   getDiscoveryConfiguration(req?: Request): Record<string, string | string[] | undefined> {
     const supported = this.getTokenEndpointAuthMethods();
