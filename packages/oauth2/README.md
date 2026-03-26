@@ -11,6 +11,17 @@ implementation for [Deno](https://deno.land/).
 - Framework-agnostic - bring your own HTTP layer
 - Pluggable model interface for storage
 
+## Flow Builders
+
+| Builder | Grant Type |
+| --- | --- |
+| `AuthorizationCodeFlowBuilder` | Authorization Code (with PKCE support) |
+| `ClientCredentialsFlowBuilder` | Client Credentials |
+| `DeviceAuthorizationFlowBuilder` | Device Authorization |
+| `OIDCAuthorizationCodeFlowBuilder` | OIDC Authorization Code |
+| `OIDCClientCredentialsFlowBuilder` | OIDC Client Credentials |
+| `OIDCDeviceAuthorizationFlowBuilder` | OIDC Device Authorization |
+
 ## Quick Start
 
 ### 1. Create a flow
