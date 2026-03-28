@@ -129,4 +129,4 @@ scopes, and token URL. Customise via constructor options or builder methods:
 
 ## License
 
-[MIT](../../LICENSE)
+[MIT](./LICENSE)
