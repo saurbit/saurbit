@@ -1,7 +1,7 @@
 # @saurbit/oauth2
 
 A framework-agnostic [OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749) authorization server
-implementation for [Deno](https://deno.land/).
+implementation.
 
 ## Features
 
