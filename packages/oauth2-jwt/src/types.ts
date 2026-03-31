@@ -43,7 +43,7 @@ export interface RawKey {
   kty: string;
   /** Intended use of the key: signature (`"sig"`), encryption (`"enc"`), or description (`"desc"`). */
   use: "sig" | "enc" | "desc";
-  /** Key ID — a unique identifier used to match a JWT `kid` header to the correct public key. */
+  /** Key ID - a unique identifier used to match a JWT `kid` header to the correct public key. */
   kid: string;
 
   /** RSA public exponent, Base64URL-encoded. Together with `n`, forms the RSA public key. */
