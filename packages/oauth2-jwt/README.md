@@ -1,6 +1,8 @@
 # @saurbit/oauth2-jwt
 
-JWT utilities and JWKS authority for [`@saurbit/oauth2`](https://jsr.io/@saurbit/oauth2). Wraps [jose](https://github.com/panva/jose) to provide ready-made implementations of the JWT-related interfaces required by `@saurbit/oauth2`.
+JWT utilities and JWKS authority for [`@saurbit/oauth2`](https://jsr.io/@saurbit/oauth2). Wraps
+[jose](https://github.com/panva/jose) to provide ready-made implementations of the JWT-related
+interfaces required by `@saurbit/oauth2`.
 
 ## Installation
 
@@ -24,7 +26,8 @@ deno add jsr:@saurbit/oauth2-jwt
 
 ## JWT Utilities
 
-`@saurbit/oauth2-jwt` provides three ready-made functions that satisfy the `JwtVerify`, `JwtDecode`, and `JwkVerify` interfaces expected by `@saurbit/oauth2`.
+`@saurbit/oauth2-jwt` provides three ready-made functions that satisfy the `JwtVerify`, `JwtDecode`,
+and `JwkVerify` interfaces expected by `@saurbit/oauth2`.
 
 ### `verifyJwt` and `decodeJwt`
 
@@ -61,7 +64,8 @@ const dpop = new DPoPTokenType(verifyJwk, createInMemoryReplayStore());
 
 ## JWKS Authority
 
-`JoseJwksAuthority` manages RS256 signing key pairs, signs and verifies JWTs, and returns the JWKS endpoint payload. Keys are stored in a `JwksKeyStore` and generated automatically on first use.
+`JoseJwksAuthority` manages RS256 signing key pairs, signs and verifies JWTs, and returns the JWKS
+endpoint payload. Keys are stored in a `JwksKeyStore` and generated automatically on first use.
 
 ### Setup
 
@@ -94,7 +98,8 @@ console.log(payload.sub); // "user-123"
 
 ### JWKS endpoint
 
-`getJwksEndpointResponse()` returns the set of current public keys in JWKS format, ready to be served at a well-known endpoint (e.g. `/.well-known/jwks.json`).
+`getJwksEndpointResponse()` returns the set of current public keys in JWKS format, ready to be
+served at a well-known endpoint (e.g. `/.well-known/jwks.json`).
 
 ```ts
 // Example with Hono
@@ -107,9 +112,13 @@ The response has the shape `{ keys: RawKey[] }` and is safe to return directly a
 
 ## Key Rotation
 
-`JwksRotator` manages scheduled key rotation. It compares the current time against the last rotation timestamp and generates a new key pair only when the configured interval has elapsed.
+`JwksRotator` manages scheduled key rotation. It compares the current time against the last rotation
+timestamp and generates a new key pair only when the configured interval has elapsed.
 
-Call `checkAndRotateKeys()` at service startup and/or on a recurring schedule (e.g. every hour). If a rotation is due a new key pair is generated; otherwise the call is a no-op. During rotation the previous public key remains available in the JWKS until its TTL expires, so in-flight tokens continue to verify correctly.
+Call `checkAndRotateKeys()` at service startup and/or on a recurring schedule (e.g. every hour). If
+a rotation is due a new key pair is generated; otherwise the call is a no-op. During rotation the
+previous public key remains available in the JWKS until its TTL expires, so in-flight tokens
+continue to verify correctly.
 
 ### Setup
 
