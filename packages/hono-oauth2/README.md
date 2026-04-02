@@ -3,6 +3,19 @@
 [Hono](https://hono.dev/) adapter for `@saurbit/oauth2`. Provides flow builders, token endpoints,
 and authorization middleware for your Hono application.
 
+## Supported Flows
+
+This package adapts all OAuth 2.0 flows supported by `@saurbit/oauth2`:
+
+| Hono Builder                                   | Grant Type                             |
+| ---------------------------------------------- | -------------------------------------- |
+| `HonoAuthorizationCodeFlowBuilder`             | Authorization Code (with PKCE support) |
+| `HonoClientCredentialsFlowBuilder`             | Client Credentials                     |
+| `HonoDeviceAuthorizationFlowBuilder`           | Device Authorization                   |
+| `HonoOIDCAuthorizationCodeFlowBuilder`         | OIDC Authorization Code                |
+| `HonoOIDCClientCredentialsFlowBuilder`         | OIDC Client Credentials                |
+| `HonoOIDCDeviceAuthorizationFlowBuilder`       | OIDC Device Authorization              |
+
 ## Installation
 
 ```bash
