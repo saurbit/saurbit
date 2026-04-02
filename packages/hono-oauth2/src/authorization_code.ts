@@ -585,7 +585,7 @@ export class HonoAuthorizationCodeFlowBuilder<
     AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
   >(
     options: HonoAuthorizationCodeFlowBuilderOptions<AuthReqData, E>,
-  ) {
+  ): HonoAuthorizationCodeFlowBuilder<E, AuthReqData> {
     return new HonoAuthorizationCodeFlowBuilder<E, AuthReqData>(options);
   }
 
@@ -705,7 +705,7 @@ export class HonoOIDCAuthorizationCodeFlowBuilder<
     AuthReqData extends AuthorizationCodeReqData = AuthorizationCodeReqData,
   >(
     options: HonoOIDCAuthorizationCodeFlowBuilderOptions<AuthReqData, E>,
-  ) {
+  ): HonoOIDCAuthorizationCodeFlowBuilder<E, AuthReqData> {
     return new HonoOIDCAuthorizationCodeFlowBuilder<E, AuthReqData>(options);
   }
 

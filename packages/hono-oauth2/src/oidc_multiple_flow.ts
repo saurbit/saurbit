@@ -97,7 +97,7 @@ export class HonoOIDCMultipleFlows<
    *
    * @returns A readonly {@link HonoMethods} instance.
    */
-  hono() {
+  hono(): Readonly<HonoMethods<E>> {
     return Object.freeze(this.#hono);
   }
 }

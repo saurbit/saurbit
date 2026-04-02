@@ -237,7 +237,7 @@ export class HonoOIDCDeviceAuthorizationFlowBuilder<
     E extends Env = Env,
   >(
     options?: HonoOIDCDeviceAuthorizationFlowBuilderOptions<E>,
-  ) {
+  ): HonoOIDCDeviceAuthorizationFlowBuilder<E> {
     return new HonoOIDCDeviceAuthorizationFlowBuilder<E>(options);
   }
 

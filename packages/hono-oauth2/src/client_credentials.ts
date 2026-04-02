@@ -303,7 +303,7 @@ export class HonoClientCredentialsFlowBuilder<
    */
   static create<E extends Env = Env>(
     options?: Partial<HonoClientCredentialsFlowOptions<E>>,
-  ) {
+  ): HonoClientCredentialsFlowBuilder<E> {
     return new HonoClientCredentialsFlowBuilder<E>(options || {});
   }
 
@@ -403,7 +403,7 @@ export class HonoOIDCClientCredentialsFlowBuilder<
    */
   static create<E extends Env = Env>(
     options?: Partial<HonoOIDCClientCredentialsFlowOptions<E>>,
-  ) {
+  ): HonoOIDCClientCredentialsFlowBuilder<E> {
     return new HonoOIDCClientCredentialsFlowBuilder<E>(options || {});
   }
 
