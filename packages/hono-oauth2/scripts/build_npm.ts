@@ -11,7 +11,7 @@ await build({
   shims: {},
   package: {
     name: "@saurbit/hono-oauth2",
-    version: "0.1.1",
+    version: "0.1.2",
     description: "Adapter for @saurbit/oauth2 flows in Hono applications",
     license: "MIT",
     repository: {
