@@ -42,7 +42,7 @@ export const clientCredentialsFlow = HonoClientCredentialsFlowBuilder
       return await Promise.resolve("admin-" + scope.join(","));
     },
   )
-  .verifyTokenHandler(verifyTokenFunction)
+  .tokenVerifier(verifyTokenFunction)
   .failedAuthorizationAction((_, error) => {
     // You can perform additional actions here, such as logging or modifying the response
     console.log("Authorization failed:", { error: error.name, message: error.message });

@@ -65,7 +65,7 @@ export interface HonoDeviceAuthorizationMethods<E extends Env = Env> extends Hon
 export class HonoDeviceAuthorizationFlow<
   E extends Env = Env,
 > extends DeviceAuthorizationFlow implements HonoAdapted<E> {
-  readonly #verifyTokenHandler: (
+  readonly #tokenVerifier: (
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<StrategyResult>;
   readonly #authorizeMiddleware: MiddlewareHandler<E & OAuth2ServerEnv>;
@@ -81,7 +81,7 @@ export class HonoDeviceAuthorizationFlow<
     },
 
     verifyToken: async (context: Context<E & OAuth2ServerEnv>): Promise<StrategyResult> => {
-      return await this.#verifyTokenHandler(context);
+      return await this.#tokenVerifier(context);
     },
 
     processAuthorization: async (
@@ -133,7 +133,7 @@ export class HonoDeviceAuthorizationFlow<
       });
     });
 
-    this.#verifyTokenHandler = async (context: Context<E & OAuth2ServerEnv>) => {
+    this.#tokenVerifier = async (context: Context<E & OAuth2ServerEnv>) => {
       const honoVerifyToken = strategyOptions.verifyToken;
       const verifyToken: StrategyVerifyTokenFunction | undefined = honoVerifyToken
         ? async (_, params) => {
@@ -211,8 +211,8 @@ export class HonoDeviceAuthorizationFlowBuilder<
 
   /**
    * This method does not have access to the Hono context.
-   * Use `verifyTokenHandler` instead to set a handler that receives the Hono context.
-   * @deprecated Use `verifyTokenHandler` instead to set a handler that receives the Hono context.
+   * Use `tokenVerifier` instead to set a handler that receives the Hono context.
+   * @deprecated Use `tokenVerifier` instead to set a handler that receives the Hono context.
    * @param handler
    * @returns
    */
@@ -223,7 +223,7 @@ export class HonoDeviceAuthorizationFlowBuilder<
     return this;
   }
 
-  verifyTokenHandler(handler: StrategyVerifyTokenFunction<Context<E & OAuth2ServerEnv>>): this {
+  tokenVerifier(handler: StrategyVerifyTokenFunction<Context<E & OAuth2ServerEnv>>): this {
     this.strategyOptions.verifyToken = handler;
     return this;
   }

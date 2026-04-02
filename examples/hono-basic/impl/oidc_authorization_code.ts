@@ -264,7 +264,7 @@ export const oidcAuthorizationCodeFlow = HonoOIDCAuthorizationCodeFlowBuilder.cr
   })
   // -- handlers for token verification and failed authorization
 
-  .verifyTokenHandler(async (
+  .tokenVerifier(async (
     _context,
     { token },
   ) => {

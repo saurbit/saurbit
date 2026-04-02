@@ -139,7 +139,7 @@ Deno.test("HonoAuthorizationCodeFlow - authorizeMiddleware with scopes rejects i
     .generateAuthorizationCode(() => Promise.resolve(undefined))
     .getUserForAuthentication(() => Promise.resolve(undefined))
     .getClientForAuthentication(() => Promise.resolve(undefined))
-    .verifyTokenHandler((_context, { token }) => {
+    .tokenVerifier((_context, { token }) => {
       if (token === "limited") {
         return { isValid: true, credentials: { app: { clientId: "c" }, scope: ["read"] } };
       }
@@ -197,7 +197,7 @@ Deno.test("HonoAuthorizationCodeFlowBuilder - verifyToken() returns invalid toke
   const builder = HonoAuthorizationCodeFlowBuilder.create({
     parseAuthorizationEndpointData: () => Promise.resolve({ username: "", password: "" }),
   });
-  builder.verifyTokenHandler(() => Promise.resolve({ isValid: false }));
+  builder.tokenVerifier(() => Promise.resolve({ isValid: false }));
   const flow = builder.build();
   const req = new Request("http://localhost/protected", {
     headers: { "Authorization": "Bearer token" },

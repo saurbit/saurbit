@@ -43,7 +43,7 @@ export interface HonoOIDCDeviceAuthorizationFlowBuilderOptions<
 export class HonoOIDCDeviceAuthorizationFlow<
   E extends Env = Env,
 > extends OIDCDeviceAuthorizationFlow implements HonoAdapted<E> {
-  readonly #verifyTokenHandler: (
+  readonly #tokenVerifier: (
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<StrategyResult>;
   readonly #authorizeMiddleware: MiddlewareHandler<E & OAuth2ServerEnv>;
@@ -59,7 +59,7 @@ export class HonoOIDCDeviceAuthorizationFlow<
     },
 
     verifyToken: async (context: Context<E & OAuth2ServerEnv>): Promise<StrategyResult> => {
-      return await this.#verifyTokenHandler(context);
+      return await this.#tokenVerifier(context);
     },
 
     processAuthorization: async (
@@ -111,7 +111,7 @@ export class HonoOIDCDeviceAuthorizationFlow<
       });
     });
 
-    this.#verifyTokenHandler = async (context: Context<E & OAuth2ServerEnv>) => {
+    this.#tokenVerifier = async (context: Context<E & OAuth2ServerEnv>) => {
       const honoVerifyToken = strategyOptions.verifyToken;
       const verifyToken: StrategyVerifyTokenFunction | undefined = honoVerifyToken
         ? async (_, params) => {
@@ -189,8 +189,8 @@ export class HonoOIDCDeviceAuthorizationFlowBuilder<
 
   /**
    * This method does not have access to the Hono context.
-   * Use `verifyTokenHandler` instead to set a handler that receives the Hono context.
-   * @deprecated Use `verifyTokenHandler` instead to set a handler that receives the Hono context.
+   * Use `tokenVerifier` instead to set a handler that receives the Hono context.
+   * @deprecated Use `tokenVerifier` instead to set a handler that receives the Hono context.
    * @param handler
    * @returns
    */
@@ -201,7 +201,7 @@ export class HonoOIDCDeviceAuthorizationFlowBuilder<
     return this;
   }
 
-  verifyTokenHandler(handler: StrategyVerifyTokenFunction<Context<E & OAuth2ServerEnv>>): this {
+  tokenVerifier(handler: StrategyVerifyTokenFunction<Context<E & OAuth2ServerEnv>>): this {
     this.strategyOptions.verifyToken = handler;
     return this;
   }

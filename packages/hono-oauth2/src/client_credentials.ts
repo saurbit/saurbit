@@ -44,7 +44,7 @@ export interface HonoOIDCClientCredentialsFlowOptions<E extends Env = Env>
 export class HonoClientCredentialsFlow<
   E extends Env = Env,
 > extends ClientCredentialsFlow implements HonoAdapted<E> {
-  readonly #verifyTokenHandler: (
+  readonly #tokenVerifier: (
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<StrategyResult>;
   readonly #authorizeMiddleware: MiddlewareHandler<E & OAuth2ServerEnv>;
@@ -60,7 +60,7 @@ export class HonoClientCredentialsFlow<
     },
 
     verifyToken: async (context: Context<E & OAuth2ServerEnv>): Promise<StrategyResult> => {
-      return await this.#verifyTokenHandler(context);
+      return await this.#tokenVerifier(context);
     },
   };
 
@@ -78,7 +78,7 @@ export class HonoClientCredentialsFlow<
       });
     });
 
-    this.#verifyTokenHandler = async (context: Context<E & OAuth2ServerEnv>) => {
+    this.#tokenVerifier = async (context: Context<E & OAuth2ServerEnv>) => {
       const honoVerifyToken = strategyOptions.verifyToken;
       const verifyToken: StrategyVerifyTokenFunction | undefined = honoVerifyToken
         ? async (_, params) => {
@@ -126,7 +126,7 @@ export class HonoClientCredentialsFlow<
 export class HonoOIDCClientCredentialsFlow<
   E extends Env = Env,
 > extends OIDCClientCredentialsFlow implements HonoAdapted<E> {
-  readonly #verifyTokenHandler: (
+  readonly #tokenVerifier: (
     context: Context<E & OAuth2ServerEnv>,
   ) => Promise<StrategyResult>;
   readonly #authorizeMiddleware: MiddlewareHandler<E & OAuth2ServerEnv>;
@@ -142,7 +142,7 @@ export class HonoOIDCClientCredentialsFlow<
     },
 
     verifyToken: async (context: Context<E & OAuth2ServerEnv>): Promise<StrategyResult> => {
-      return await this.#verifyTokenHandler(context);
+      return await this.#tokenVerifier(context);
     },
   };
 
@@ -160,7 +160,7 @@ export class HonoOIDCClientCredentialsFlow<
       });
     });
 
-    this.#verifyTokenHandler = async (context: Context<E & OAuth2ServerEnv>) => {
+    this.#tokenVerifier = async (context: Context<E & OAuth2ServerEnv>) => {
       const honoVerifyToken = strategyOptions.verifyToken;
       const verifyToken: StrategyVerifyTokenFunction | undefined = honoVerifyToken
         ? async (_, params) => {
@@ -236,8 +236,8 @@ export class HonoClientCredentialsFlowBuilder<
 
   /**
    * This method does not have access to the Hono context.
-   * Use `verifyTokenHandler` instead to set a handler that receives the Hono context.
-   * @deprecated Use `verifyTokenHandler` instead to set a handler that receives the Hono context.
+   * Use `tokenVerifier` instead to set a handler that receives the Hono context.
+   * @deprecated Use `tokenVerifier` instead to set a handler that receives the Hono context.
    * @param handler
    * @returns
    */
@@ -248,7 +248,7 @@ export class HonoClientCredentialsFlowBuilder<
     return this;
   }
 
-  verifyTokenHandler(handler: StrategyVerifyTokenFunction<Context<E & OAuth2ServerEnv>>): this {
+  tokenVerifier(handler: StrategyVerifyTokenFunction<Context<E & OAuth2ServerEnv>>): this {
     this.strategyOptions.verifyToken = handler;
     return this;
   }
@@ -289,8 +289,8 @@ export class HonoOIDCClientCredentialsFlowBuilder<
 
   /**
    * This method does not have access to the Hono context.
-   * Use `verifyTokenHandler` instead to set a handler that receives the Hono context.
-   * @deprecated Use `verifyTokenHandler` instead to set a handler that receives the Hono context.
+   * Use `tokenVerifier` instead to set a handler that receives the Hono context.
+   * @deprecated Use `tokenVerifier` instead to set a handler that receives the Hono context.
    * @param handler
    * @returns
    */
@@ -301,7 +301,7 @@ export class HonoOIDCClientCredentialsFlowBuilder<
     return this;
   }
 
-  verifyTokenHandler(handler: StrategyVerifyTokenFunction<Context<E & OAuth2ServerEnv>>): this {
+  tokenVerifier(handler: StrategyVerifyTokenFunction<Context<E & OAuth2ServerEnv>>): this {
     this.strategyOptions.verifyToken = handler;
     return this;
   }

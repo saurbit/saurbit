@@ -248,7 +248,7 @@ export const authorizationCodeFlow = HonoAuthorizationCodeFlowBuilder
   )
   // -- handlers for token verification and failed authorization
 
-  .verifyTokenHandler(verifyTokenFunction)
+  .tokenVerifier(verifyTokenFunction)
   .failedAuthorizationAction((_, error) => {
     // You can perform additional actions here, such as logging or modifying the response
     console.log("Authorization failed:", { error: error.name, message: error.message });

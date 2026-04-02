@@ -35,7 +35,7 @@ export const flow = HonoClientCredentialsFlowBuilder
     // Return an access token string
     return undefined;
   })
-  .verifyTokenHandler((request, { token }) => {
+  .tokenVerifier((ctxt, { token }) => {
     if (token === "valid-token") {
       return { isValid: true, credentials: { app: { clientId: "example-client" } } };
     }

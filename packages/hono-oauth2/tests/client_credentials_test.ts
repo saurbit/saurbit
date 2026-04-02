@@ -99,7 +99,7 @@ Deno.test("HonoClientCredentialsFlow - authorizeMiddleware sets credentials on v
     .clientSecretBasicAuthenticationMethod()
     .getClient(() => Promise.resolve(undefined))
     .generateAccessToken(() => Promise.resolve(undefined))
-    .verifyTokenHandler((_context, { token }) => {
+    .tokenVerifier((_context, { token }) => {
       if (token === "valid-token") {
         return Promise.resolve({
           isValid: true,
@@ -130,7 +130,7 @@ Deno.test("HonoClientCredentialsFlow - authorizeMiddleware returns 401 for inval
     .clientSecretBasicAuthenticationMethod()
     .getClient(() => Promise.resolve(undefined))
     .generateAccessToken(() => Promise.resolve(undefined))
-    .verifyTokenHandler(() => Promise.resolve({ isValid: false }))
+    .tokenVerifier(() => Promise.resolve({ isValid: false }))
     .build();
 
   const app = new Hono();
@@ -150,7 +150,7 @@ Deno.test("HonoClientCredentialsFlow - authorizeMiddleware with scopes rejects i
     .clientSecretBasicAuthenticationMethod()
     .getClient(() => Promise.resolve(undefined))
     .generateAccessToken(() => Promise.resolve(undefined))
-    .verifyTokenHandler((_context, { token }) => {
+    .tokenVerifier((_context, { token }) => {
       if (token === "limited-token") {
         return Promise.resolve({
           isValid: true,
