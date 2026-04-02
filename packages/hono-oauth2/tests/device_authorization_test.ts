@@ -1,5 +1,5 @@
 import { assertEquals, assertInstanceOf } from "@std/assert";
-import { Context, Hono } from "hono";
+import { type Context, Hono } from "hono";
 import {
   HonoDeviceAuthorizationFlow,
   HonoDeviceAuthorizationFlowBuilder,

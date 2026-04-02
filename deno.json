@@ -22,7 +22,7 @@
   },
   "tasks": {
     "build:npm": "deno task --filter @saurbit/oauth2 build:npm && deno task --filter @saurbit/hono-oauth2 build:npm",
-    "check": "deno check packages/*/src/**/*.ts examples/**/*.ts",
+    "check": "deno task --filter @saurbit/ check",
     "dev:example-hono-basic": "deno task --filter @saurbit/example-hono-basic dev",
     "dev:example-oak-basic": "deno task --filter @saurbit/example-oak-basic dev",
     "lint": "deno lint",

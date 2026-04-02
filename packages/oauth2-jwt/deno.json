@@ -17,6 +17,7 @@
     "jose": "npm:jose@^6.2.2"
   },
   "tasks": {
-    "build:npm": "deno run -A scripts/build_npm.ts"
+    "build:npm": "deno run -A scripts/build_npm.ts",
+    "check": "deno check src/**/*.ts tests/**/*.ts"
   }
 }

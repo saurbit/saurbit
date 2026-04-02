@@ -4,12 +4,12 @@ import {
   ClientCredentialsFlow,
   InvalidRequestError,
   OAuth2Error,
-} from "./src/mod.ts";
+} from "../src/mod.ts";
 import type {
   AuthorizationCodeModel,
   ClientCredentialsFlowOptions,
   ClientCredentialsModel,
-} from "./src/mod.ts";
+} from "../src/mod.ts";
 
 /** Minimal stub model for testing. */
 function createStubModel(): ClientCredentialsModel {

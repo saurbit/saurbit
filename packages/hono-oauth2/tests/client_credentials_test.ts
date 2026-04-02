@@ -1,5 +1,5 @@
 import { assertEquals, assertInstanceOf } from "@std/assert";
-import { Context, Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
   HonoClientCredentialsFlow,
@@ -101,7 +101,10 @@ Deno.test("HonoClientCredentialsFlow - authorizeMiddleware sets credentials on v
     .generateAccessToken(() => Promise.resolve(undefined))
     .verifyTokenHandler((_context, { token }) => {
       if (token === "valid-token") {
-        return Promise.resolve({ isValid: true, credentials: { app: { clientId: "test" }, scope: ["read"] } });
+        return Promise.resolve({
+          isValid: true,
+          credentials: { app: { clientId: "test" }, scope: ["read"] },
+        });
       }
       return Promise.resolve({ isValid: false });
     })
@@ -149,7 +152,10 @@ Deno.test("HonoClientCredentialsFlow - authorizeMiddleware with scopes rejects i
     .generateAccessToken(() => Promise.resolve(undefined))
     .verifyTokenHandler((_context, { token }) => {
       if (token === "limited-token") {
-        return Promise.resolve({ isValid: true, credentials: { app: { clientId: "test" }, scope: ["read"] } });
+        return Promise.resolve({
+          isValid: true,
+          credentials: { app: { clientId: "test" }, scope: ["read"] },
+        });
       }
       return Promise.resolve({ isValid: false });
     })

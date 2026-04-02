@@ -1,5 +1,5 @@
 import { assertEquals, assertInstanceOf } from "@std/assert";
-import { Hono, Context } from "hono";
+import { type Context, Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
   HonoAuthorizationCodeFlow,
@@ -214,7 +214,7 @@ Deno.test("HonoAuthorizationCodeFlowBuilder - verifyToken() returns invalid toke
 
 Deno.test("HonoAuthorizationCodeFlowBuilder - allows overriding access token lifetime", () => {
   const flow = HonoAuthorizationCodeFlowBuilder.create({
-    parseAuthorizationEndpointData:  () => Promise.resolve({ username: "", password: "" }),
+    parseAuthorizationEndpointData: () => Promise.resolve({ username: "", password: "" }),
   })
     .setAccessTokenLifetime(1800)
     .getClient(() => Promise.resolve(undefined))

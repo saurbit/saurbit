@@ -4,9 +4,7 @@ import type { Env } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { HonoOIDCMultipleFlows } from "../src/oidc_multiple_flow.ts";
 import type { HonoOIDCFlow } from "../src/oidc_multiple_flow.ts";
-import {
-  HonoOIDCClientCredentialsFlow,
-} from "../src/client_credentials.ts";
+import { HonoOIDCClientCredentialsFlow } from "../src/client_credentials.ts";
 import type { HonoOIDCClientCredentialsFlowOptions } from "../src/client_credentials.ts";
 import type { OAuth2ServerEnv } from "../src/types.ts";
 
@@ -97,7 +95,10 @@ Deno.test("HonoOIDCMultipleFlows - token() returns 'No flows available' error wh
 Deno.test("HonoOIDCMultipleFlows - verifyToken() returns error when no flow validates", async () => {
   const multi = new HonoOIDCMultipleFlows({
     ...STUB_OIDC_CONFIG,
-    flows: [createStubOIDCFlow({ verifySuccess: false }), createStubOIDCFlow({ verifySuccess: false })],
+    flows: [
+      createStubOIDCFlow({ verifySuccess: false }),
+      createStubOIDCFlow({ verifySuccess: false }),
+    ],
   });
 
   const app = new Hono<Env & OAuth2ServerEnv>();
@@ -136,7 +137,10 @@ Deno.test("HonoOIDCMultipleFlows - verifyToken() returns 'No flows available' wh
 Deno.test("HonoOIDCMultipleFlows - authorizeMiddleware returns 401 when all flows reject", async () => {
   const multi = new HonoOIDCMultipleFlows({
     ...STUB_OIDC_CONFIG,
-    flows: [createStubOIDCFlow({ verifySuccess: false }), createStubOIDCFlow({ verifySuccess: false })],
+    flows: [
+      createStubOIDCFlow({ verifySuccess: false }),
+      createStubOIDCFlow({ verifySuccess: false }),
+    ],
   });
 
   const app = new Hono();
