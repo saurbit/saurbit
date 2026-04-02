@@ -16,6 +16,36 @@ This package adapts all OAuth 2.0 flows supported by `@saurbit/oauth2`:
 | `HonoOIDCClientCredentialsFlowBuilder`         | OIDC Client Credentials                |
 | `HonoOIDCDeviceAuthorizationFlowBuilder`       | OIDC Device Authorization              |
 
+### Multiple flows
+
+`HonoOIDCMultipleFlows` lets you combine several OIDC flows behind a single interface. It tries
+each registered flow in order and returns the first successful result, making it straightforward to
+support multiple grant types on the same server.
+
+### The `hono()` method
+
+Every flow class exposes a `hono()` method that returns a frozen set of Hono-adapted helpers:
+
+| Method                           | Description                                                                                     |
+| -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `token(c)`                       | Handles a token endpoint request using the Hono context.                                        |
+| `verifyToken(c)`                 | Extracts and verifies the bearer token, returning a typed result.                               |
+| `authorizeMiddleware(scopes?)`   | Returns a middleware that enforces token validity and optional scope requirements on a route. On success it sets `c.get("credentials")` for downstream handlers. |
+
+```ts
+// token endpoint
+app.post("/token", async (c) => {
+  const result = await flow.hono().token(c);
+  // ...
+});
+
+// verify token manually
+const result = await flow.hono().verifyToken(c);
+
+// protect a route
+app.get("/resource", flow.hono().authorizeMiddleware(["read"]), handler);
+```
+
 ## Installation
 
 ```bash
