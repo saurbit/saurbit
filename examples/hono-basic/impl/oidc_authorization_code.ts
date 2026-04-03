@@ -1,8 +1,8 @@
 // impl/authorization_code.ts
 
-import { StrategyInternalError } from "@saurbit/oauth2";
+import { BearerTokenType, StrategyInternalError } from "@saurbit/oauth2";
 
-import { BearerTokenType, HonoOIDCAuthorizationCodeFlowBuilder } from "@saurbit/hono-oauth2";
+import { HonoOIDCAuthorizationCodeFlowBuilder } from "@saurbit/hono-oauth2";
 import { HTTPException } from "hono/http-exception";
 import { html } from "hono/html";
 import { HTTPRateLimitException } from "./common.ts";

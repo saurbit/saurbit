@@ -1,8 +1,8 @@
 // impl/device_authorization.ts
 
-import { StrategyInternalError } from "@saurbit/oauth2";
+import { BearerTokenType, StrategyInternalError } from "@saurbit/oauth2";
 
-import { BearerTokenType, HonoDeviceAuthorizationFlowBuilder } from "@saurbit/hono-oauth2";
+import { HonoDeviceAuthorizationFlowBuilder } from "@saurbit/hono-oauth2";
 import { HTTPException } from "hono/http-exception";
 import { verifyTokenFunction } from "./common.ts";
 
