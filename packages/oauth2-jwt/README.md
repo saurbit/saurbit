@@ -132,7 +132,7 @@ const authority = new JoseJwksAuthority(store, 8.64e+6); // 100 days key TTL
 
 const rotator = new JwksRotator({
   keyGenerator: authority,
-  rotatorKeyStore: store,
+  rotationTimestampStore: store,
   rotationIntervalMs: 7.884e9, // 91 days
 });
 ```

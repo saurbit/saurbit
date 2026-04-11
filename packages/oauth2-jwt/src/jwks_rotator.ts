@@ -7,7 +7,7 @@ export interface JwksRotatorOptions {
   /** The key generator used to produce new signing key pairs during rotation. */
   keyGenerator: KeyGenerator;
   /** The store used to read and persist the last rotation timestamp. */
-  rotatorKeyStore: JwksRotationTimestampStore;
+  rotationTimestampStore: JwksRotationTimestampStore;
   /** How often (in milliseconds) new keys should be generated. For example, `7.884e9` for 91 days. */
   rotationIntervalMs: number; // e.g., 180 days
 }
@@ -22,16 +22,16 @@ export interface JwksRotatorOptions {
  */
 export class JwksRotator {
   private readonly keyGenerator: KeyGenerator;
-  private readonly rotatorKeyStore: JwksRotationTimestampStore;
+  private readonly rotationTimestampStore: JwksRotationTimestampStore;
   private readonly rotationIntervalMs: number;
 
   /**
    * @param options - Rotation configuration: key generator, timestamp store, and interval.
    */
-  constructor({ keyGenerator, rotationIntervalMs, rotatorKeyStore }: JwksRotatorOptions) {
+  constructor({ keyGenerator, rotationIntervalMs, rotationTimestampStore }: JwksRotatorOptions) {
     this.keyGenerator = keyGenerator;
     this.rotationIntervalMs = rotationIntervalMs;
-    this.rotatorKeyStore = rotatorKeyStore;
+    this.rotationTimestampStore = rotationTimestampStore;
   }
 
   /**
@@ -40,11 +40,11 @@ export class JwksRotator {
    */
   public async checkAndRotateKeys(): Promise<void> {
     const now = Date.now();
-    const lastRotation = await this.rotatorKeyStore.getLastRotationTimestamp();
+    const lastRotation = await this.rotationTimestampStore.getLastRotationTimestamp();
 
     if (isNaN(lastRotation) || now - lastRotation >= this.rotationIntervalMs) {
       await this.rotateKeys();
-      await this.rotatorKeyStore.setLastRotationTimestamp(now);
+      await this.rotationTimestampStore.setLastRotationTimestamp(now);
     } else {
       const _nextIn = this.rotationIntervalMs - (now - lastRotation);
     }

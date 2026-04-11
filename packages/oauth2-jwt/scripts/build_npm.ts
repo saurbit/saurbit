@@ -14,7 +14,7 @@ await build({
   shims: {},
   package: {
     name: "@saurbit/oauth2-jwt",
-    version: "0.1.2",
+    version: "0.1.3",
     description: "JWT utilities for @saurbit/oauth2 (jose-based)",
     license: "MIT",
     repository: {

@@ -12,6 +12,6 @@ export const jwksAuthority = new JoseJwksAuthority(jwksStore, 86400); // 24h
 // when checkAndRotateKeys is called (e.g., at startup or on a schedule).
 export const jwksRotator = new JwksRotator({
   keyGenerator: jwksAuthority,
-  rotatorKeyStore: jwksStore,
+  rotationTimestampStore: jwksStore,
   rotationIntervalMs: 7.884e9, // 91 days
 });
