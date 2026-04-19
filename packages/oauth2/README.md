@@ -3,6 +3,8 @@
 A framework-agnostic [OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749) authorization server
 implementation.
 
+📖 [Documentation](https://saurbit.github.io/website/packages/oauth2/)
+
 ## Features
 
 - **Authorization Code** flow (with PKCE support)

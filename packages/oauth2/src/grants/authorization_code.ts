@@ -188,6 +188,9 @@ export interface AuthorizationCodeEndpointContinueResponse<
   /** The authenticated user. */
   user: AuthorizationCodeUser;
 
+  /** The scopes granted to the user. */
+  scope: string[];
+
   /** An optional message describing the next step required. */
   message?: string;
 
