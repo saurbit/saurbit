@@ -17,7 +17,7 @@
 import { OAuth2Error, OAuth2Errors } from "../errors.ts";
 import { OAuth2FlowTokenResponse } from "../grants/flow.ts";
 import { StrategyError, StrategyInternalError, StrategyResult } from "../strategy.ts";
-import { getOriginFromUrl, normalizeUrl } from "../utils/url_tools.ts";
+import { getOriginFromRequest, getOriginFromUrl, normalizeUrl } from "../utils/url_tools.ts";
 import { OIDCFlow } from "./types.ts";
 
 /**
@@ -195,10 +195,7 @@ export class OIDCMultipleFlows<TFlow extends OIDCFlow = OIDCFlow> {
   getDiscoveryConfiguration(req?: Request): Record<string, string | string[] | undefined> {
     let fullUrl: string | undefined;
     if (req) {
-      const url = new URL(req.url);
-      const forwardedProto = req.headers.get("x-forwarded-proto");
-      const protocol = forwardedProto ? forwardedProto : url.protocol.replace(":", "");
-      fullUrl = protocol + "://" + url.host;
+      fullUrl = getOriginFromRequest(req);
     }
 
     const host = typeof fullUrl === "string"

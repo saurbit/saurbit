@@ -14,3 +14,10 @@ export function getOriginFromUrl(url: string): string | undefined {
     return undefined;
   }
 }
+
+export function getOriginFromRequest(request: Request): string {
+  const url = new URL(request.url);
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  const protocol = forwardedProto ? forwardedProto : url.protocol.replace(":", "");
+  return protocol + "://" + url.host;
+}

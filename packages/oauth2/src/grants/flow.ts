@@ -142,6 +142,9 @@ export interface OAuth2RefreshTokenGrantContext {
   /** The refresh token string from the request. */
   refreshToken: string;
 
+  /** The origin of the request, used for validation and security purposes. */
+  origin: string;
+
   /** The requested scopes for the new access token, if provided. */
   scope?: string[];
 }
@@ -158,6 +161,9 @@ export interface OAuth2RefreshTokenRequest {
 
   /** The refresh token string from the request. */
   refreshToken: string;
+
+  /** The origin of the request, used for validation and security purposes. */
+  origin: string;
 
   /** The client secret, if the client is confidential. */
   clientSecret?: string;

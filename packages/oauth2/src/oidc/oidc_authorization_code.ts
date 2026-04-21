@@ -30,7 +30,7 @@ import {
   GenerateAuthorizationCodeFunction,
   GetUserForAuthenticationFunction,
 } from "../grants/authorization_code.ts";
-import { getOriginFromUrl, normalizeUrl } from "../utils/url_tools.ts";
+import { getOriginFromRequest, getOriginFromUrl, normalizeUrl } from "../utils/url_tools.ts";
 import { OIDCFlow, OIDCFlowExtendedOptions, OIDCUserInfo } from "./types.ts";
 
 function isPrompt(value?: string | null): value is "none" | "login" | "consent" | "select_account" {
@@ -402,10 +402,7 @@ export class OIDCAuthorizationCodeFlow<
 
     let fullUrl: string | undefined;
     if (req) {
-      const url = new URL(req.url);
-      const forwardedProto = req.headers.get("x-forwarded-proto");
-      const protocol = forwardedProto ? forwardedProto : url.protocol.replace(":", "");
-      fullUrl = protocol + "://" + url.host;
+      fullUrl = getOriginFromRequest(req);
     }
 
     const host = typeof fullUrl === "string"
@@ -546,6 +543,8 @@ export class OIDCAuthorizationCodeFlow<
       };
     }
 
+    const origin = getOriginFromRequest(request);
+
     // In a real implementation, you would validate the client_id and redirect_uri here,
     // and then generate an authorization code and redirect the user to the redirect_uri with the code and state as query parameters.
 
@@ -553,6 +552,7 @@ export class OIDCAuthorizationCodeFlow<
       clientId,
       responseType,
       redirectUri,
+      origin,
       scope: scope ? scope.split(" ") : undefined,
       state,
       codeChallenge,
@@ -596,6 +596,7 @@ export class OIDCAuthorizationCodeFlow<
         responseType,
         redirectUri,
         scope: validatedScopes,
+        origin,
         state,
         codeChallenge,
         codeChallengeMethod,

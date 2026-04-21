@@ -16,6 +16,7 @@ import {
 } from "../errors.ts";
 import { TokenTypeValidationResponse } from "../token_types/types.ts";
 import type { OAuth2Client } from "../types.ts";
+import { getOriginFromRequest } from "../utils/url_tools.ts";
 import {
   OAuth2Flow,
   type OAuth2FlowOptions,
@@ -53,6 +54,9 @@ export interface ClientCredentialsGrantContext {
 
   /** The access token lifetime in seconds. */
   accessTokenLifetime: number;
+
+  /** The origin of the request, used for validation and security purposes. */
+  origin: string;
 }
 
 /**
@@ -67,6 +71,9 @@ export interface ClientCredentialsTokenRequest {
 
   /** The grant type value from the request body. Should be `"client_credentials"`. */
   grantType: string;
+
+  /** The origin of the request, used for validation and security purposes. */
+  origin: string;
 
   /** The requested scopes, if provided in the request body. */
   scope?: string[];
@@ -169,6 +176,8 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
 
     // If the request contains client authentication credentials, validate them
     if (!error) {
+      const origin = getOriginFromRequest(request);
+
       // If clientId or clientSecret is missing, return 401 error
       if (!clientId || !clientSecret) {
         return { success: false, error: new InvalidClientError("Invalid client credentials") };
@@ -193,6 +202,7 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
         clientSecret,
         grantType: grantTypeInBody,
         scope: scopeInBody,
+        origin,
       };
 
       // Validate client credentials using the model's getClient() method
@@ -231,6 +241,7 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
         scope: validatedScopes,
         tokenType: this.tokenType,
         accessTokenLifetime: this.accessTokenLifetime,
+        origin,
       };
 
       // generate access token from client, valid scope,

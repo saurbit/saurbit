@@ -20,6 +20,7 @@ import {
 } from "../errors.ts";
 import { TokenTypeValidationResponse } from "../token_types/types.ts";
 import type { OAuth2Client, OAuth2TokenResponseBody } from "../types.ts";
+import { getOriginFromRequest } from "../utils/url_tools.ts";
 import {
   type OAuth2AccessTokenResult,
   OAuth2Flow,
@@ -79,6 +80,9 @@ export interface AuthorizationCodeGrantContext {
   /** The authorization code being exchanged for tokens. */
   code: string;
 
+  /** The origin of the request, used for validation and security purposes. */
+  origin: string;
+
   /** The PKCE code verifier, if PKCE was used in the authorization request. */
   codeVerifier?: string;
 
@@ -98,6 +102,9 @@ export interface AuthorizationCodeTokenRequest {
 
   /** The authorization code received from the authorization endpoint. */
   code: string;
+
+  /** The origin of the request, used for validation and security purposes. */
+  origin: string;
 
   /** The PKCE code verifier, if PKCE was used in the authorization request. */
   codeVerifier?: string;
@@ -137,6 +144,9 @@ export interface AuthorizationCodeEndpointContext {
   /** The validated scopes requested by the client. */
   scope: string[];
 
+  /** The origin of the request, used for validation and security purposes. */
+  origin: string;
+
   /** An opaque value used to maintain state between the request and callback. */
   state?: string;
 
@@ -159,6 +169,9 @@ export interface AuthorizationCodeEndpointRequest {
 
   /** The redirect URI from the authorization request query string. */
   redirectUri: string;
+
+  /** The origin of the request, used for validation and security purposes. */
+  origin: string;
 
   /** The requested scopes, if provided. */
   scope?: string[];
@@ -562,6 +575,8 @@ export abstract class AbstractAuthorizationCodeFlow<
       };
     }
 
+    const origin = getOriginFromRequest(request);
+
     // In a real implementation, you would validate the client_id and redirect_uri here,
     // and then generate an authorization code and redirect the user to the redirect_uri with the code and state as query parameters.
 
@@ -573,6 +588,7 @@ export abstract class AbstractAuthorizationCodeFlow<
       state,
       codeChallenge,
       codeChallengeMethod,
+      origin,
     });
 
     if (!client) {
@@ -605,6 +621,7 @@ export abstract class AbstractAuthorizationCodeFlow<
         state,
         codeChallenge,
         codeChallengeMethod,
+        origin,
       },
     };
   }
@@ -847,6 +864,7 @@ export abstract class AbstractAuthorizationCodeFlow<
     let refreshTokenInBody: string | undefined;
     let scopeInBody: string[] | undefined;
     const contentType = req.headers.get("content-type") || "";
+    const origin = getOriginFromRequest(req);
 
     if (contentType.includes("application/x-www-form-urlencoded")) {
       const form = await req.formData();
@@ -971,6 +989,7 @@ export abstract class AbstractAuthorizationCodeFlow<
           code: codeInBody,
           codeVerifier: codeVerifierInBody,
           redirectUri: redirectUriInBody,
+          origin,
         };
         client = await this.model.getClient(
           tokenRequest,
@@ -982,6 +1001,7 @@ export abstract class AbstractAuthorizationCodeFlow<
           grantType: grantTypeInBody,
           refreshToken: refreshTokenInBody,
           scope: scopeInBody ? [...scopeInBody] : undefined,
+          origin,
         };
         client = await this.model.getClient(
           refreshTokenRequest,
@@ -1017,6 +1037,7 @@ export abstract class AbstractAuthorizationCodeFlow<
             code: codeInBody!,
             codeVerifier: codeVerifierInBody,
             redirectUri: redirectUriInBody,
+            origin,
           }
           : {
             client,
@@ -1025,6 +1046,7 @@ export abstract class AbstractAuthorizationCodeFlow<
             accessTokenLifetime: this.accessTokenLifetime,
             refreshToken: refreshTokenInBody!,
             scope: scopeInBody,
+            origin,
           },
       };
     }

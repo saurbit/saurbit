@@ -15,7 +15,7 @@ import {
   DeviceAuthorizationModel,
 } from "../grants/device_authorization.ts";
 import { OAuth2FlowTokenResponse, OAuth2GenerateAccessTokenFunction } from "../grants/flow.ts";
-import { getOriginFromUrl, normalizeUrl } from "../utils/url_tools.ts";
+import { getOriginFromRequest, getOriginFromUrl, normalizeUrl } from "../utils/url_tools.ts";
 import { OIDCFlow, OIDCFlowExtendedOptions, OIDCUserInfo } from "./types.ts";
 
 /**
@@ -221,10 +221,7 @@ export class OIDCDeviceAuthorizationFlow extends AbstractDeviceAuthorizationFlow
 
     let fullUrl: string | undefined;
     if (req) {
-      const url = new URL(req.url);
-      const forwardedProto = req.headers.get("x-forwarded-proto");
-      const protocol = forwardedProto ? forwardedProto : url.protocol.replace(":", "");
-      fullUrl = protocol + "://" + url.host;
+      fullUrl = getOriginFromRequest(req);
     }
 
     const host = typeof fullUrl === "string"

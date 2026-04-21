@@ -22,6 +22,7 @@ import {
 } from "../errors.ts";
 import { TokenTypeValidationResponse } from "../token_types/types.ts";
 import { OAuth2Client, OAuth2TokenResponseBody } from "../types.ts";
+import { getOriginFromRequest } from "../utils/url_tools.ts";
 import {
   OAuth2AccessTokenError,
   OAuth2AccessTokenResult,
@@ -65,6 +66,9 @@ export interface DeviceAuthorizationGrantContext {
 
   /** The device code being polled. */
   deviceCode: string;
+
+  /** The origin of the request, used for validation and security purposes. */
+  origin: string;
 }
 
 /**
@@ -82,6 +86,9 @@ export interface DeviceAuthorizationTokenRequest {
 
   /** The client secret, if the client is confidential. */
   clientSecret?: string;
+
+  /** The origin of the request, used for validation and security purposes. */
+  origin: string;
 }
 
 /**
@@ -94,6 +101,9 @@ export interface DeviceAuthorizationEndpointContext {
 
   /** The validated scopes requested by the client. */
   scope: string[];
+
+  /** The origin of the request, used for validation and security purposes. */
+  origin: string;
 }
 
 /**
@@ -108,6 +118,9 @@ export interface DeviceAuthorizationEndpointRequest {
 
   /** The requested scopes, if provided. */
   scope?: string[];
+
+  /** The origin of the request, used for validation and security purposes. */
+  origin: string;
 }
 
 /**
@@ -422,6 +435,8 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
   ): Promise<DeviceAuthorizationInitiationResponse> {
     const req = request.clone();
 
+    const origin = getOriginFromRequest(request);
+
     // Validate client authentication credentials using the registered client authentication methods
     const { clientId, clientSecret } = await this
       .extractClientCredentials(
@@ -462,6 +477,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
       clientId,
       clientSecret,
       scope: scope ? scope.split(" ") : undefined,
+      origin,
     });
 
     if (!client) {
@@ -488,6 +504,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
       context: {
         client,
         scope: validatedScopes,
+        origin,
       },
     };
   }
@@ -742,6 +759,8 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
 
     // If the request contains client authentication credentials, validate them
     if (!error) {
+      const origin = getOriginFromRequest(request);
+
       // If clientId is missing, return 401 error
       if (!clientId) {
         return {
@@ -772,6 +791,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
           clientSecret,
           grantType: grantTypeInBody,
           deviceCode: deviceCodeInBody,
+          origin,
         };
         client = await this.model.getClient(
           tokenRequest,
@@ -783,6 +803,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
           grantType: grantTypeInBody,
           refreshToken: refreshTokenInBody,
           scope: scopeInBody ? [...scopeInBody] : undefined,
+          origin,
         };
         client = await this.model.getClient(
           refreshTokenRequest,
@@ -816,6 +837,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
             tokenType: this.tokenType,
             accessTokenLifetime: this.accessTokenLifetime,
             deviceCode: deviceCodeInBody!,
+            origin,
           }
           : {
             client,
@@ -824,6 +846,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
             accessTokenLifetime: this.accessTokenLifetime,
             refreshToken: refreshTokenInBody!,
             scope: scopeInBody,
+            origin,
           },
       };
     }

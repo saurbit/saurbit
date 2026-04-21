@@ -11,7 +11,7 @@ import {
   AbstractClientCredentialsFlow,
   ClientCredentialsFlowOptions,
 } from "../grants/client_credentials.ts";
-import { getOriginFromUrl, normalizeUrl } from "../utils/url_tools.ts";
+import { getOriginFromRequest, getOriginFromUrl, normalizeUrl } from "../utils/url_tools.ts";
 import { OIDCFlow, OIDCFlowExtendedOptions } from "./types.ts";
 
 /**
@@ -113,10 +113,7 @@ export class OIDCClientCredentialsFlow extends AbstractClientCredentialsFlow imp
 
     let fullUrl: string | undefined;
     if (req) {
-      const url = new URL(req.url);
-      const forwardedProto = req.headers.get("x-forwarded-proto");
-      const protocol = forwardedProto ? forwardedProto : url.protocol.replace(":", "");
-      fullUrl = protocol + "://" + url.host;
+      fullUrl = getOriginFromRequest(req);
     }
 
     const host = typeof fullUrl === "string"
