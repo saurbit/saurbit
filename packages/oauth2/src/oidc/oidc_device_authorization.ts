@@ -245,7 +245,7 @@ export class OIDCDeviceAuthorizationFlow extends AbstractDeviceAuthorizationFlow
 
     const wellKnownOpenIDConfig: Record<string, string | string[] | undefined> = {
       issuer: host,
-      authorization_endpoint: authorizationEndpoint,
+      device_authorization_endpoint: authorizationEndpoint,
       token_endpoint: tokenEndpoint,
       jwks_uri: jwksEndpoint,
       userinfo_endpoint: this.getUserInfoEndpoint(),
