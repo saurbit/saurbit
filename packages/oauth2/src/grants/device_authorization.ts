@@ -560,7 +560,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
         verificationEndpoint: this.verificationEndpoint,
         verificationEndpointComplete: `${this.verificationEndpoint}?user_code=${
           encodeURIComponent(codeResult.userCode)
-        }}`,
+        }`,
       },
     };
   }
