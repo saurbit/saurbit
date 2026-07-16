@@ -2,6 +2,13 @@ import { JwkThumbprintCalculator, JwkVerify, JwtPayload } from "../utils/jwt_typ
 import { InMemoryReplayStore, ReplayDetector } from "../utils/replay_store.ts";
 import type { TokenType, TokenTypeValidationResponse } from "./types.ts";
 
+export interface DPoPTokenTypeValidationResponse extends TokenTypeValidationResponse {
+  data?: {
+    dpopPayload: Record<string, unknown>;
+    dpopThumbprint?: string;
+  };
+}
+
 /**
  * A custom handler for validating a DPoP-bound access token on a protected resource endpoint.
  *
@@ -14,7 +21,7 @@ export type DPoPTokenTypeValidation = (
   request: Request,
   token: string,
   tokenLifetime: number,
-) => TokenTypeValidationResponse | Promise<TokenTypeValidationResponse>;
+) => DPoPTokenTypeValidationResponse | Promise<DPoPTokenTypeValidationResponse>;
 
 /**
  * A custom handler for validating a DPoP proof on a token endpoint request,
@@ -27,14 +34,7 @@ export type DPoPTokenTypeValidation = (
 export type DPoPTokenTypeRequestValidation = (
   req: Request,
   tokenLifetime: number,
-) => TokenTypeValidationResponse | Promise<TokenTypeValidationResponse>;
-
-export interface DPoPTokenTypeValidationResponse extends TokenTypeValidationResponse {
-  data?: {
-    dpopPayload: Record<string, unknown>;
-    dpopThumbprint?: string;
-  };
-}
+) => DPoPTokenTypeValidationResponse | Promise<DPoPTokenTypeValidationResponse>;
 
 /**
  * {@link TokenType} implementation for the DPoP (Demonstration of Proof-of-Possession) token scheme.
@@ -198,7 +198,7 @@ export class DPoPTokenType implements TokenType {
    * @param req - The incoming token endpoint HTTP request.
    * @returns A validation response indicating whether the DPoP proof is valid.
    */
-  async isValidTokenRequest(req: Request): Promise<TokenTypeValidationResponse> {
+  async isValidTokenRequest(req: Request): Promise<DPoPTokenTypeValidationResponse> {
     return await this.#tokenRequestHandler(req, this.#tokenLifetime);
   }
 

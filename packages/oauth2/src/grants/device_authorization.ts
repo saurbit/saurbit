@@ -69,6 +69,9 @@ export interface DeviceAuthorizationGrantContext {
 
   /** The origin of the request, used for validation and security purposes. */
   origin: string;
+
+  /** The result of the token type validation. */
+  tokenTypeValidation: TokenTypeValidationResponse;
 }
 
 /**
@@ -89,6 +92,9 @@ export interface DeviceAuthorizationTokenRequest {
 
   /** The origin of the request, used for validation and security purposes. */
   origin: string;
+
+  /** The result of the token type validation. */
+  tokenTypeValidation: TokenTypeValidationResponse;
 }
 
 /**
@@ -792,6 +798,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
           grantType: grantTypeInBody,
           deviceCode: deviceCodeInBody,
           origin,
+          tokenTypeValidation: { ...tokenTypeValidationResponse },
         };
         client = await this.model.getClient(
           tokenRequest,
@@ -804,6 +811,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
           refreshToken: refreshTokenInBody,
           scope: scopeInBody ? [...scopeInBody] : undefined,
           origin,
+          tokenTypeValidation: { ...tokenTypeValidationResponse },
         };
         client = await this.model.getClient(
           refreshTokenRequest,
@@ -838,6 +846,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
             accessTokenLifetime: this.accessTokenLifetime,
             deviceCode: deviceCodeInBody!,
             origin,
+            tokenTypeValidation: { ...tokenTypeValidationResponse },
           }
           : {
             client,
@@ -847,6 +856,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
             refreshToken: refreshTokenInBody!,
             scope: scopeInBody,
             origin,
+            tokenTypeValidation: { ...tokenTypeValidationResponse },
           },
       };
     }

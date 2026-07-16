@@ -9,7 +9,7 @@
 
 import { InvalidRequestError, OAuth2Error } from "../errors.ts";
 import { BearerTokenType } from "../token_types/bearer_token.ts";
-import { TokenType } from "../token_types/types.ts";
+import { TokenType, TokenTypeValidationResponse } from "../token_types/types.ts";
 import {
   ClientAuthMethod,
   ClientSecretBasic,
@@ -145,6 +145,9 @@ export interface OAuth2RefreshTokenGrantContext {
   /** The origin of the request, used for validation and security purposes. */
   origin: string;
 
+  /** The result of the token type validation. */
+  tokenTypeValidation: TokenTypeValidationResponse;
+
   /** The requested scopes for the new access token, if provided. */
   scope?: string[];
 }
@@ -164,6 +167,9 @@ export interface OAuth2RefreshTokenRequest {
 
   /** The origin of the request, used for validation and security purposes. */
   origin: string;
+
+  /** The result of the token type validation. */
+  tokenTypeValidation: TokenTypeValidationResponse;
 
   /** The client secret, if the client is confidential. */
   clientSecret?: string;

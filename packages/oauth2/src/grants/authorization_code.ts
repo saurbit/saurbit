@@ -83,6 +83,9 @@ export interface AuthorizationCodeGrantContext {
   /** The origin of the request, used for validation and security purposes. */
   origin: string;
 
+  /** The result of the token type validation. */
+  tokenTypeValidation: TokenTypeValidationResponse;
+
   /** The PKCE code verifier, if PKCE was used in the authorization request. */
   codeVerifier?: string;
 
@@ -105,6 +108,9 @@ export interface AuthorizationCodeTokenRequest {
 
   /** The origin of the request, used for validation and security purposes. */
   origin: string;
+
+  /** The result of the token type validation. */
+  tokenTypeValidation: TokenTypeValidationResponse;
 
   /** The PKCE code verifier, if PKCE was used in the authorization request. */
   codeVerifier?: string;
@@ -990,6 +996,7 @@ export abstract class AbstractAuthorizationCodeFlow<
           codeVerifier: codeVerifierInBody,
           redirectUri: redirectUriInBody,
           origin,
+          tokenTypeValidation: { ...tokenTypeValidationResponse },
         };
         client = await this.model.getClient(
           tokenRequest,
@@ -1002,6 +1009,7 @@ export abstract class AbstractAuthorizationCodeFlow<
           refreshToken: refreshTokenInBody,
           scope: scopeInBody ? [...scopeInBody] : undefined,
           origin,
+          tokenTypeValidation: { ...tokenTypeValidationResponse },
         };
         client = await this.model.getClient(
           refreshTokenRequest,
@@ -1038,6 +1046,7 @@ export abstract class AbstractAuthorizationCodeFlow<
             codeVerifier: codeVerifierInBody,
             redirectUri: redirectUriInBody,
             origin,
+            tokenTypeValidation: { ...tokenTypeValidationResponse },
           }
           : {
             client,
@@ -1047,6 +1056,7 @@ export abstract class AbstractAuthorizationCodeFlow<
             refreshToken: refreshTokenInBody!,
             scope: scopeInBody,
             origin,
+            tokenTypeValidation: { ...tokenTypeValidationResponse },
           },
       };
     }

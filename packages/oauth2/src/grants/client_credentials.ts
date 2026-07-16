@@ -57,6 +57,9 @@ export interface ClientCredentialsGrantContext {
 
   /** The origin of the request, used for validation and security purposes. */
   origin: string;
+
+  /** The result of the token type validation. */
+  tokenTypeValidation: TokenTypeValidationResponse;
 }
 
 /**
@@ -74,6 +77,9 @@ export interface ClientCredentialsTokenRequest {
 
   /** The origin of the request, used for validation and security purposes. */
   origin: string;
+
+  /** The result of the token type validation. */
+  tokenTypeValidation: TokenTypeValidationResponse;
 
   /** The requested scopes, if provided in the request body. */
   scope?: string[];
@@ -203,6 +209,7 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
         grantType: grantTypeInBody,
         scope: scopeInBody,
         origin,
+        tokenTypeValidation: { ...tokenTypeValidationResponse },
       };
 
       // Validate client credentials using the model's getClient() method
@@ -242,6 +249,7 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
         tokenType: this.tokenType,
         accessTokenLifetime: this.accessTokenLifetime,
         origin,
+        tokenTypeValidation: { ...tokenTypeValidationResponse },
       };
 
       // generate access token from client, valid scope,
