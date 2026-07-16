@@ -1,4 +1,4 @@
-import { JwkThumbprintCalculator, JwkVerify } from "../utils/jwt_types.ts";
+import { JwkThumbprintCalculator, JwkVerify, JwtPayload } from "../utils/jwt_types.ts";
 import { InMemoryReplayStore, ReplayDetector } from "../utils/replay_store.ts";
 import type { TokenType, TokenTypeValidationResponse } from "./types.ts";
 
@@ -69,19 +69,20 @@ export class DPoPTokenType implements TokenType {
   }
 
   #jwkVerify: JwkVerify;
-  #jwkThumbprintCalculator?: JwkThumbprintCalculator;
+  #jwkThumbprintCalculator: JwkThumbprintCalculator;
 
   /**
    * Creates a new `DPoPTokenType` instance.
    *
    * @param jwkVerify - A function that verifies a DPoP proof JWT against a JWK Set.
+   * @param jwkThumbprintCalculator - A function that calculates the JWK thumbprint for a given JWK.
    * @param replayDetector - An optional replay detector for JTI tracking.
    *   Defaults to an {@link InMemoryReplayStore}.
    */
   constructor(
     jwkVerify: JwkVerify,
+    jwkThumbprintCalculator: JwkThumbprintCalculator,
     replayDetector?: ReplayDetector,
-    jwkThumbprintCalculator?: JwkThumbprintCalculator,
   ) {
     this.#jwkVerify = jwkVerify;
     this.#jwkThumbprintCalculator = jwkThumbprintCalculator;
@@ -138,10 +139,10 @@ export class DPoPTokenType implements TokenType {
         dpopPayload: payload,
       };
 
-      if (this.#jwkThumbprintCalculator && protectedHeader.jwk) {
-        // const tokenThumbprint = ... extract from token cnf.jkt
-        data.dpopThumbprint = await this.#jwkThumbprintCalculator(protectedHeader.jwk, "sha256");
-        // if (tokenThumbprint !== proofThumbprint) throw new Error('Token binding mismatch');
+      if (protectedHeader.jwk) {
+        data.dpopThumbprint = await this.#jwkThumbprintCalculator(protectedHeader.jwk);
+        // const tokenThumbprint = ... extract from access token cnf.jkt
+        // if (tokenThumbprint !== data.dpopThumbprint) throw new Error('Token binding mismatch');
       }
 
       return { isValid: true, data };
@@ -210,5 +211,28 @@ export class DPoPTokenType implements TokenType {
    */
   async isValid(req: Request, token: string): Promise<DPoPTokenTypeValidationResponse> {
     return await this.#handler(req, token, this.#tokenLifetime);
+  }
+
+  /**
+   * Update the claims of a JWT payload to include the JWK thumbprint in the `cnf` claim.
+   * Use this when issuing a DPoP-bound access token to bind it to the public key of the DPoP proof.
+   *
+   * @param claims - The JWT claims object to which the JWK thumbprint will be added.
+   * @param thumbprint - The JWK thumbprint to add to the `cnf` claim.
+   * @returns The updated JWT claims object.
+   */
+  addJwkThumbprintToCnfClaim(claims: JwtPayload, thumbprint: string): JwtPayload {
+    if (!claims || typeof claims !== "object") {
+      throw new Error("Invalid claims object");
+    }
+    if (!thumbprint || typeof thumbprint !== "string") {
+      throw new Error("Invalid thumbprint");
+    }
+    const cnf: Record<string, unknown> = claims.cnf && typeof claims.cnf === "object"
+      ? claims.cnf as Record<string, unknown>
+      : {};
+    cnf.jkt = thumbprint;
+    claims.cnf = cnf;
+    return claims;
   }
 }

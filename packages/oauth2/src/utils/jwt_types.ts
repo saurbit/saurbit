@@ -70,5 +70,4 @@ export type JwkVerify = (jwt: string) => Promise<{
 export type JwkThumbprintCalculator = (
   // deno-lint-ignore no-explicit-any
   jwk: any,
-  hashAlg: string,
 ) => Promise<string>;

@@ -1,5 +1,10 @@
-import type { JwkVerify, JwtDecode, JwtVerify } from "@saurbit/oauth2";
-import { decodeJwt as joseDecodeJwt, importJWK, jwtVerify } from "jose";
+import type { JwkThumbprintCalculator, JwkVerify, JwtDecode, JwtVerify } from "@saurbit/oauth2";
+import {
+  calculateJwkThumbprint as joseCalculateJwkThumbprint,
+  decodeJwt as joseDecodeJwt,
+  importJWK,
+  jwtVerify,
+} from "jose";
 
 /**
  * Verifies a JWT using the provided secret or key and returns the decoded payload.
@@ -56,4 +61,18 @@ export const verifyJwk: JwkVerify = async (token) => {
     },
   );
   return { payload, protectedHeader };
+};
+
+/**
+ * Calculates the JWK thumbprint for a given JSON Web Key (JWK) using SHA-256.
+ * The thumbprint is a base64url-encoded string that uniquely identifies the JWK.
+ *
+ * @param jwk - The JSON Web Key (JWK) for which to calculate the thumbprint.
+ * @returns The JWK thumbprint as a base64url-encoded string.
+ * @throws If the JWK is invalid or cannot be processed.
+ *
+ * Pass this as the `JwkThumbprintCalculator` argument to `DPoPTokenType` from `@saurbit/oauth2`.
+ */
+export const calculateJwkThumbprint: JwkThumbprintCalculator = (jwk) => {
+  return joseCalculateJwkThumbprint(jwk, "sha256");
 };
