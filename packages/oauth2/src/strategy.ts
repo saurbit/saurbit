@@ -6,7 +6,7 @@
  * and an optional application-level `verifyToken` callback.
  */
 
-import type { TokenType } from "./token_types/types.ts";
+import type { TokenType, TokenTypeValidationResponse } from "./token_types/types.ts";
 
 /**
  * Base class for all strategy errors.
@@ -161,6 +161,10 @@ export interface StrategyVerifyTokenFunction<Req = Request> {
        * after the token type prefix has been stripped.
        */
       token: string;
+      /**
+       * The result of the token type validation.
+       */
+      tokenTypeValidation: TokenTypeValidationResponse;
     },
   ):
     | Promise<{
@@ -236,14 +240,14 @@ export async function evaluateStrategy(
     return { success: false, error: new StrategyInvalidTokenTypeError() };
   }
 
-  const tokenValidation = await options.tokenType.isValid(request.clone(), token);
-  if (!tokenValidation.isValid) {
-    return { success: false, error: new StrategyInvalidTokenError(tokenValidation.message) };
+  const tokenTypeValidation = await options.tokenType.isValid(request.clone(), token);
+  if (!tokenTypeValidation.isValid) {
+    return { success: false, error: new StrategyInvalidTokenError(tokenTypeValidation.message) };
   }
 
   if (options.verifyToken) {
     try {
-      const result = await options.verifyToken(request.clone(), { token });
+      const result = await options.verifyToken(request.clone(), { token, tokenTypeValidation });
       if (result?.isValid && result.credentials) {
         return { success: true, credentials: result.credentials };
       }

@@ -55,6 +55,20 @@ export type JwtVerify = (
  * A function that verifies a JWT against a JWK Set (JWKS).
  *
  * @param jwt - The compact serialized JWT string to verify.
- * @returns The verified and decoded JWT payload.
+ * @returns An object containing the verified JWT payload and the protected header.
  */
-export type JwkVerify = (jwt: string) => Promise<JwtPayload>;
+export type JwkVerify = (jwt: string) => Promise<{
+  payload: JwtPayload;
+  protectedHeader: {
+    alg?: string;
+    b64?: true;
+    crit?: string[];
+    [propName: string]: unknown;
+  };
+}>;
+
+export type JwkThumbprintCalculator = (
+  // deno-lint-ignore no-explicit-any
+  jwk: any,
+  hashAlg: string,
+) => Promise<string>;

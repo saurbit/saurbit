@@ -183,6 +183,7 @@ export {
   DPoPTokenType,
   type DPoPTokenTypeRequestValidation,
   type DPoPTokenTypeValidation,
+  type DPoPTokenTypeValidationResponse,
 } from "./token_types/dpop_token.ts";
 export type { TokenType, TokenTypeValidationResponse } from "./token_types/types.ts";
 
@@ -190,7 +191,13 @@ export type { TokenType, TokenTypeValidationResponse } from "./token_types/types
 
 //#region Utilities
 
-export type { JwkVerify, JwtDecode, JwtPayload, JwtVerify } from "./utils/jwt_types.ts";
+export type {
+  JwkThumbprintCalculator,
+  JwkVerify,
+  JwtDecode,
+  JwtPayload,
+  JwtVerify,
+} from "./utils/jwt_types.ts";
 export {
   createInMemoryReplayStore,
   InMemoryReplayStore,

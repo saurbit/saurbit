@@ -41,11 +41,11 @@ export const decodeJwt: JwtDecode = (jwt) => {
  * Pass this as the `JwkVerify` argument to `DPoPTokenType` from `@saurbit/oauth2`.
  *
  * @param token - The compact serialized JWT (DPoP proof) to verify.
- * @returns The verified JWT payload.
+ * @returns The verified JWT payload and the protected header.
  * @throws If the token is invalid, the `jwk` header is missing, or signature verification fails.
  */
 export const verifyJwk: JwkVerify = async (token) => {
-  const { payload } = await jwtVerify(
+  const { payload, protectedHeader } = await jwtVerify(
     token,
     (header) => {
       if (!header.jwk) throw new Error("Missing JWK");
@@ -55,5 +55,5 @@ export const verifyJwk: JwkVerify = async (token) => {
       algorithms: ["ES256"],
     },
   );
-  return payload;
+  return { payload, protectedHeader };
 };

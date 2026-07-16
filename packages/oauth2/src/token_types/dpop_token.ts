@@ -1,4 +1,4 @@
-import { JwkVerify } from "../utils/jwt_types.ts";
+import { JwkThumbprintCalculator, JwkVerify } from "../utils/jwt_types.ts";
 import { InMemoryReplayStore, ReplayDetector } from "../utils/replay_store.ts";
 import type { TokenType, TokenTypeValidationResponse } from "./types.ts";
 
@@ -28,6 +28,13 @@ export type DPoPTokenTypeRequestValidation = (
   req: Request,
   tokenLifetime: number,
 ) => TokenTypeValidationResponse | Promise<TokenTypeValidationResponse>;
+
+export interface DPoPTokenTypeValidationResponse extends TokenTypeValidationResponse {
+  data?: {
+    dpopPayload: Record<string, unknown>;
+    dpopThumbprint?: string;
+  };
+}
 
 /**
  * {@link TokenType} implementation for the DPoP (Demonstration of Proof-of-Possession) token scheme.
@@ -62,6 +69,7 @@ export class DPoPTokenType implements TokenType {
   }
 
   #jwkVerify: JwkVerify;
+  #jwkThumbprintCalculator?: JwkThumbprintCalculator;
 
   /**
    * Creates a new `DPoPTokenType` instance.
@@ -73,8 +81,10 @@ export class DPoPTokenType implements TokenType {
   constructor(
     jwkVerify: JwkVerify,
     replayDetector?: ReplayDetector,
+    jwkThumbprintCalculator?: JwkThumbprintCalculator,
   ) {
     this.#jwkVerify = jwkVerify;
+    this.#jwkThumbprintCalculator = jwkThumbprintCalculator;
     this.#replayDetector = replayDetector ?? new InMemoryReplayStore<string>();
     this.#handler = async (req: Request, token, tokenLifetime: number) => {
       if (!token) return { isValid: false, message: "Missing token" };
@@ -89,14 +99,14 @@ export class DPoPTokenType implements TokenType {
   private async _handleDefault(
     req: Request,
     tokenLifetime: number,
-  ): Promise<TokenTypeValidationResponse> {
+  ): Promise<DPoPTokenTypeValidationResponse> {
     const dpopHeader = req.headers.get("DPoP");
     if (!dpopHeader || typeof dpopHeader != "string") {
       return { message: "Missing Demonstration of Proof-of-Possession", isValid: false };
     }
 
     try {
-      const payload = await this.#jwkVerify(
+      const { payload, protectedHeader } = await this.#jwkVerify(
         dpopHeader,
       );
 
@@ -124,7 +134,17 @@ export class DPoPTokenType implements TokenType {
       }
       await this.#replayDetector.add(payload.jti, tokenLifetime);
 
-      return { isValid: true, dpopPayload: payload };
+      const data: DPoPTokenTypeValidationResponse["data"] = {
+        dpopPayload: payload,
+      };
+
+      if (this.#jwkThumbprintCalculator && protectedHeader.jwk) {
+        // const tokenThumbprint = ... extract from token cnf.jkt
+        data.dpopThumbprint = await this.#jwkThumbprintCalculator(protectedHeader.jwk, "sha256");
+        // if (tokenThumbprint !== proofThumbprint) throw new Error('Token binding mismatch');
+      }
+
+      return { isValid: true, data };
     } catch (err) {
       return { message: `${err}`, isValid: false };
     }
@@ -188,7 +208,7 @@ export class DPoPTokenType implements TokenType {
    * @param token - The DPoP-bound access token extracted from the `Authorization` header.
    * @returns A validation response indicating whether the proof and token are valid.
    */
-  async isValid(req: Request, token: string): Promise<TokenTypeValidationResponse> {
+  async isValid(req: Request, token: string): Promise<DPoPTokenTypeValidationResponse> {
     return await this.#handler(req, token, this.#tokenLifetime);
   }
 }
