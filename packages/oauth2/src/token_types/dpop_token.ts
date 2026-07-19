@@ -220,18 +220,49 @@ export class DPoPTokenType implements TokenType {
    * @param claims - The JWT claims object to which the JWK thumbprint will be added.
    * @param thumbprint - The JWK thumbprint to add to the `cnf` claim.
    * @returns The updated JWT claims object.
+   * @throws If the claims object is invalid or the thumbprint is not a non-empty string.
    */
-  addJwkThumbprintToCnfClaim(claims: JwtPayload, thumbprint: string): JwtPayload {
+  addJwkThumbprintToCnfClaim(claims: JwtPayload, thumbprint: string): JwtPayload;
+  /**
+   * Update the claims of a JWT payload to include the JWK thumbprint in the `cnf` claim.
+   * Use this when issuing a DPoP-bound access token to bind it to the public key of the DPoP proof.
+   *
+   * @param claims - The JWT claims object to which the JWK thumbprint will be added.
+   * @param response - The token type validation response containing the DPoP thumbprint.
+   * @returns The updated JWT claims object.
+   * @throws If the validation response is invalid or does not contain a DPoP thumbprint.
+   */
+  addJwkThumbprintToCnfClaim(claims: JwtPayload, response: TokenTypeValidationResponse): JwtPayload;
+  addJwkThumbprintToCnfClaim(
+    claims: JwtPayload,
+    thumbprint: string | TokenTypeValidationResponse,
+  ): JwtPayload {
     if (!claims || typeof claims !== "object") {
       throw new Error("Invalid claims object");
     }
-    if (!thumbprint || typeof thumbprint !== "string") {
-      throw new Error("Invalid thumbprint");
+    let tmpThumbprint: string | undefined;
+    if (typeof thumbprint === "object" && "isValid" in thumbprint) {
+      if (!thumbprint.isValid) {
+        throw new Error(thumbprint.message || "Invalid DPoP proof");
+      }
+      const dpopThumbprint =
+        "data" in thumbprint && thumbprint.data && typeof thumbprint.data === "object" &&
+          "dpopThumbprint" in thumbprint.data
+          ? thumbprint.data.dpopThumbprint
+          : undefined;
+      if (typeof dpopThumbprint !== "string") {
+        throw new Error("Invalid DPoP proof validation response");
+      }
+      thumbprint = dpopThumbprint;
+    } else if (typeof thumbprint === "string" && thumbprint.length > 0) {
+      tmpThumbprint = thumbprint;
+    } else {
+      throw new Error("Invalid thumbprint argument");
     }
     const cnf: Record<string, unknown> = claims.cnf && typeof claims.cnf === "object"
       ? claims.cnf as Record<string, unknown>
       : {};
-    cnf.jkt = thumbprint;
+    cnf.jkt = tmpThumbprint;
     claims.cnf = cnf;
     return claims;
   }
@@ -242,6 +273,7 @@ export class DPoPTokenType implements TokenType {
    * @param response - The token type validation response to check.
    * @param thumbprint - The expected DPoP thumbprint.
    * @returns `true` if the response is valid and the thumbprint matches.
+   * @throws If the response is invalid or the thumbprint does not match.
    */
   validateThumbprint(
     response: TokenTypeValidationResponse,
@@ -256,6 +288,7 @@ export class DPoPTokenType implements TokenType {
    * @param response - The token type validation response to check.
    * @param payload - The JWT payload containing the JWK thumbprint in the `cnf` claim.
    * @returns `true` if the response is valid and the thumbprint matches.
+   * @throws If the response is invalid or the thumbprint does not match.
    */
   validateThumbprint(
     response: TokenTypeValidationResponse,
