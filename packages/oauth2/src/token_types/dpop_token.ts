@@ -249,6 +249,27 @@ export class DPoPTokenType implements TokenType {
   ): response is DPoPTokenTypeValidationResponse & {
     isValid: true;
     data: { dpopThumbprint: string };
+  };
+  /**
+   * Validates the DPoP thumbprint in a token type validation response.
+   *
+   * @param response - The token type validation response to check.
+   * @param payload - The JWT payload containing the JWK thumbprint in the `cnf` claim.
+   * @returns `true` if the response is valid and the thumbprint matches.
+   */
+  validateThumbprint(
+    response: TokenTypeValidationResponse,
+    payload: JwtPayload,
+  ): response is DPoPTokenTypeValidationResponse & {
+    isValid: true;
+    data: { dpopThumbprint: string };
+  };
+  validateThumbprint(
+    response: TokenTypeValidationResponse,
+    thumbprint: string | JwtPayload,
+  ): response is DPoPTokenTypeValidationResponse & {
+    isValid: true;
+    data: { dpopThumbprint: string };
   } {
     if (!response.isValid) {
       throw new Error(response.message || "Invalid DPoP proof");
@@ -262,10 +283,23 @@ export class DPoPTokenType implements TokenType {
       throw new Error("Invalid DPoP proof validation response");
     }
     if (!dpopThumbprint) {
-      throw new Error("Missing DPoP thumbprint in validation response");
+      throw new Error("Missing DPoP proof thumbprint in validation response");
     }
-    if (dpopThumbprint !== thumbprint) {
-      throw new Error("DPoP proof thumbprint does not match");
+    if (typeof thumbprint === "string") {
+      if (dpopThumbprint !== thumbprint) {
+        throw new Error("DPoP proof thumbprint does not match");
+      }
+    } else if (typeof thumbprint === "object" && thumbprint !== null) {
+      const cnf = thumbprint.cnf;
+      const jkt = cnf && typeof cnf === "object" && "jkt" in cnf ? cnf.jkt : undefined;
+      if (typeof jkt !== "string") {
+        throw new Error("Missing JWK thumbprint in JWT claims");
+      }
+      if (dpopThumbprint !== jkt) {
+        throw new Error("DPoP proof thumbprint does not match JWT claims");
+      }
+    } else {
+      throw new Error("Invalid thumbprint argument");
     }
 
     return true;
