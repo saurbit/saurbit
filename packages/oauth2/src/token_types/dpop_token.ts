@@ -253,7 +253,7 @@ export class DPoPTokenType implements TokenType {
       if (typeof dpopThumbprint !== "string") {
         throw new Error("Invalid DPoP proof validation response");
       }
-      thumbprint = dpopThumbprint;
+      tmpThumbprint = dpopThumbprint;
     } else if (typeof thumbprint === "string" && thumbprint.length > 0) {
       tmpThumbprint = thumbprint;
     } else {
