@@ -235,4 +235,39 @@ export class DPoPTokenType implements TokenType {
     claims.cnf = cnf;
     return claims;
   }
+
+  /**
+   * Validates the DPoP thumbprint in a token type validation response.
+   *
+   * @param response - The token type validation response to check.
+   * @param thumbprint - The expected DPoP thumbprint.
+   * @returns `true` if the response is valid and the thumbprint matches.
+   */
+  validateThumbprint(
+    response: TokenTypeValidationResponse,
+    thumbprint: string,
+  ): response is DPoPTokenTypeValidationResponse & {
+    isValid: true;
+    data: { dpopThumbprint: string };
+  } {
+    if (!response.isValid) {
+      throw new Error(response.message || "Invalid DPoP proof");
+    }
+
+    const dpopThumbprint = "data" in response && response.data &&
+        typeof response.data === "object" && "dpopThumbprint" in response.data
+      ? response.data.dpopThumbprint
+      : undefined;
+    if (typeof dpopThumbprint !== "string") {
+      throw new Error("Invalid DPoP proof validation response");
+    }
+    if (!dpopThumbprint) {
+      throw new Error("Missing DPoP thumbprint in validation response");
+    }
+    if (dpopThumbprint !== thumbprint) {
+      throw new Error("DPoP proof thumbprint does not match");
+    }
+
+    return true;
+  }
 }
