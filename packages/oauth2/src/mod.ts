@@ -204,6 +204,7 @@ export {
   type ReplayDetector,
   type ReplayStore,
 } from "./utils/replay_store.ts";
+export { generateAccessTokenHash } from "./utils/methods.ts";
 export { getOriginFromRequest } from "./utils/url_tools.ts";
 
 //#endregion

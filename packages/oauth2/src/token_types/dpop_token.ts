@@ -1,4 +1,5 @@
 import { JwkThumbprintCalculator, JwkVerify, JwtPayload } from "../utils/jwt_types.ts";
+import { generateAccessTokenHash } from "../utils/methods.ts";
 import { InMemoryReplayStore, ReplayDetector } from "../utils/replay_store.ts";
 import type { TokenType, TokenTypeValidationResponse } from "./types.ts";
 
@@ -110,6 +111,10 @@ export class DPoPTokenType implements TokenType {
       const { payload, protectedHeader } = await this.#jwkVerify(
         dpopHeader,
       );
+
+      if (payload.typ !== "dpop+jwt") {
+        return { message: "Invalid DPoP proof type", isValid: false };
+      }
 
       if (payload.htm !== req.method.toUpperCase()) {
         return { message: "HTM mismatch", isValid: false };
@@ -336,5 +341,28 @@ export class DPoPTokenType implements TokenType {
     }
 
     return true;
+  }
+
+  async validateAccessTokenHash(
+    response: TokenTypeValidationResponse,
+    accessToken: string,
+  ): Promise<void> {
+    if (!response.isValid) {
+      throw new Error(response.message || "Invalid DPoP proof");
+    }
+
+    const ath = "data" in response && response.data &&
+        typeof response.data === "object" && "ath" in response.data
+      ? response.data.ath
+      : undefined;
+
+    if (typeof ath !== "string") {
+      throw new Error("Missing access token hash in DPoP proof validation response");
+    }
+
+    const expectedAth = await generateAccessTokenHash(accessToken);
+    if (ath !== expectedAth) {
+      throw new Error("Access token hash does not match DPoP proof");
+    }
   }
 }

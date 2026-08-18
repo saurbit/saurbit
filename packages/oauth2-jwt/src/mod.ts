@@ -4,7 +4,13 @@ export { createInMemoryKeyStore, InMemoryKeyStore } from "./jwks_key_store.ts";
 
 export { JwksRotator, type JwksRotatorOptions } from "./jwks_rotator.ts";
 
-export { calculateJwkThumbprint, decodeJwt, verifyJwk, verifyJwt } from "./methods.ts";
+export {
+  calculateJwkThumbprint,
+  createDPoPJwkVerifier,
+  decodeJwt,
+  verifyJwk,
+  verifyJwt,
+} from "./methods.ts";
 
 export type {
   JwksKeyStore,

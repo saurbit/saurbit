@@ -63,6 +63,48 @@ export const verifyJwk: JwkVerify = async (token) => {
   return { payload, protectedHeader };
 };
 
+export interface DPoPJwkVerifierConfig {
+  /**
+   * An array of allowed algorithms for verifying the JWT.
+   * If not provided, defaults to `["ES256"]`.
+   * Only the algorithms specified in this array will be accepted during verification.
+   * This helps ensure that only expected and secure algorithms are used for JWT verification.
+   *
+   * @example
+   * ```ts
+   * const verifier = createDPoPJwkVerifier({ algorithms: ["ES256", "PS256"] });
+   * ```
+   *
+   * @default ["ES256"]
+   */
+  algorithms?: ("ES256" | "ES384" | "ES512" | "PS256" | "PS384" | "PS512")[];
+}
+
+/**
+ * Creates a DPoP JWK verifier function with the specified configuration.
+ *
+ * @param config - The configuration for the DPoP JWK verifier.
+ * @returns A `JwkVerify` function that verifies DPoP proofs using the specified algorithms.
+ */
+export function createDPoPJwkVerifier(config: DPoPJwkVerifierConfig): JwkVerify {
+  const algorithms = Array.isArray(config.algorithms) && config.algorithms.length
+    ? config.algorithms
+    : ["ES256"];
+  return async (token) => {
+    const { payload, protectedHeader } = await jwtVerify(
+      token,
+      (header) => {
+        if (!header.jwk) throw new Error("Missing JWK");
+        return importJWK(header.jwk, header.alg);
+      },
+      {
+        algorithms,
+      },
+    );
+    return { payload, protectedHeader };
+  };
+}
+
 /**
  * Calculates the JWK thumbprint for a given JSON Web Key (JWK) using SHA-256.
  * The thumbprint is a base64url-encoded string that uniquely identifies the JWK.
