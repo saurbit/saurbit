@@ -59,10 +59,31 @@ Used by `DPoPTokenType` for Demonstration of Proof-of-Possession token validatio
 
 ```ts
 import { createInMemoryReplayStore, DPoPTokenType } from "@saurbit/oauth2";
-import { verifyJwk } from "@saurbit/oauth2-jwt";
+import { calculateJwkThumbprint, verifyJwk } from "@saurbit/oauth2-jwt";
 
-const dpop = new DPoPTokenType(verifyJwk, createInMemoryReplayStore());
+const dpop = new DPoPTokenType(verifyJwk, calculateJwkThumbprint, createInMemoryReplayStore());
 ```
+
+`verifyJwk` only accepts `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, and `PS512` algorithm tokens.
+You can also customize the allowed algorithms by passing an array of algorithm names to
+`createDPoPJwkVerifier`.
+
+### `createDPoPJwkVerifier`
+
+Used to create a `JwkVerify` function with a custom set of allowed algorithms.
+
+```ts
+import { createInMemoryReplayStore, DPoPTokenType } from "@saurbit/oauth2";
+import { calculateJwkThumbprint, createDPoPJwkVerifier, verifyJwk } from "@saurbit/oauth2-jwt";
+
+const dpop = new DPoPTokenType(
+  createDPoPJwkVerifier(["ES256", "PS256"]), // only allow ES256 and PS256 algorithms
+  calculateJwkThumbprint,
+  createInMemoryReplayStore(),
+);
+```
+
+### `calculateJwkThumbprint`
 
 ## JWKS Authority
 

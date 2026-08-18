@@ -41,7 +41,7 @@ export const decodeJwt: JwtDecode = (jwt) => {
 /**
  * Verifies a JWT whose header embeds the public JWK (`"jwk"` header parameter).
  * The public key is extracted from the JWT header itself and used to verify the signature.
- * Only `ES256` algorithm tokens are accepted.
+ * Only `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, and `PS512` algorithm tokens are accepted.
  *
  * Pass this as the `JwkVerify` argument to `DPoPTokenType` from `@saurbit/oauth2`.
  *
@@ -57,7 +57,7 @@ export const verifyJwk: JwkVerify = async (token) => {
       return importJWK(header.jwk, header.alg);
     },
     {
-      algorithms: ["ES256"],
+      algorithms: ["ES256", "ES384", "ES512", "PS256", "PS384", "PS512"],
     },
   );
   return { payload, protectedHeader };
@@ -66,7 +66,7 @@ export const verifyJwk: JwkVerify = async (token) => {
 export interface DPoPJwkVerifierConfig {
   /**
    * An array of allowed algorithms for verifying the JWT.
-   * If not provided, defaults to `["ES256"]`.
+   * If not provided, defaults to `["ES256", "ES384", "ES512", "PS256", "PS384", "PS512"]`.
    * Only the algorithms specified in this array will be accepted during verification.
    * This helps ensure that only expected and secure algorithms are used for JWT verification.
    *
@@ -75,7 +75,7 @@ export interface DPoPJwkVerifierConfig {
    * const verifier = createDPoPJwkVerifier({ algorithms: ["ES256", "PS256"] });
    * ```
    *
-   * @default ["ES256"]
+   * @default ["ES256", "ES384", "ES512", "PS256", "PS384", "PS512"]
    */
   algorithms?: ("ES256" | "ES384" | "ES512" | "PS256" | "PS384" | "PS512")[];
 }
@@ -89,7 +89,7 @@ export interface DPoPJwkVerifierConfig {
 export function createDPoPJwkVerifier(config: DPoPJwkVerifierConfig): JwkVerify {
   const algorithms = Array.isArray(config.algorithms) && config.algorithms.length
     ? config.algorithms
-    : ["ES256"];
+    : ["ES256", "ES384", "ES512", "PS256", "PS384", "PS512"];
   return async (token) => {
     const { payload, protectedHeader } = await jwtVerify(
       token,
