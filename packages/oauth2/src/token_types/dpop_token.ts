@@ -343,6 +343,11 @@ export class DPoPTokenType implements TokenType {
     return true;
   }
 
+  /**
+   * Validates the access token hash (`ath`) in a token type validation response against the provided access token.
+   * @param response - The token type validation response to check.
+   * @param accessToken - The access token to validate against the DPoP proof.
+   */
   async validateAccessTokenHash(
     response: TokenTypeValidationResponse,
     accessToken: string,
@@ -352,8 +357,11 @@ export class DPoPTokenType implements TokenType {
     }
 
     const ath = "data" in response && response.data &&
-        typeof response.data === "object" && "ath" in response.data
-      ? response.data.ath
+        typeof response.data === "object" && "dpopPayload" in response.data
+      ? response.data.dpopPayload && typeof response.data.dpopPayload === "object" &&
+          "ath" in response.data.dpopPayload
+        ? response.data.dpopPayload.ath
+        : undefined
       : undefined;
 
     if (typeof ath !== "string") {
