@@ -13,6 +13,7 @@
  * @see https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication
  */
 
+import { InvalidClientError } from "../errors.ts";
 import { JwtDecode, JwtPayload, JwtVerify } from "../utils/jwt_types.ts";
 import { ClientAuthMethod, ClientAuthMethodResponse } from "./types.ts";
 
@@ -205,24 +206,44 @@ export class PrivateKeyJwt implements ClientAuthMethod {
       "client_assertion" in body &&
       typeof body.client_assertion === "string"
     ) {
+      res.hasAuthMethod = true;
+
       const decoded = await this.#jwtDecode(body.client_assertion);
 
-      if (decoded.aud && typeof decoded.aud === "string") {
-        res.clientId = decoded.aud;
-        const publicKey = await this.#handler(decoded.aud, decoded, body.client_assertion);
+      if (typeof decoded.sub === "string" && decoded.sub === decoded.iss) {
+        res.clientId = decoded.sub;
+        const publicKey = await this.#handler(decoded.sub, decoded, body.client_assertion);
 
         if (publicKey) {
-          const { payload } = await this.#jwtVerify(
-            body.client_assertion,
-            typeof publicKey === "string" ? new TextEncoder().encode(publicKey) : publicKey,
-            {
-              algorithms: this.algorithms,
-            },
-          );
-          if (payload) {
-            res.clientSecret = body.client_assertion;
+          try {
+            const { payload } = await this.#jwtVerify(
+              body.client_assertion,
+              typeof publicKey === "string" ? new TextEncoder().encode(publicKey) : publicKey,
+              {
+                algorithms: this.algorithms,
+              },
+            );
+            if (payload) {
+              res.clientSecret = body.client_assertion;
+            } else {
+              res.error = new InvalidClientError(
+                "private_key_jwt authentication failed: invalid signature or algorithm",
+              );
+            }
+          } catch (_err) {
+            res.error = new InvalidClientError(
+              "private_key_jwt authentication failed: invalid signature or algorithm",
+            );
           }
+        } else {
+          res.error = new InvalidClientError(
+            "private_key_jwt authentication requires a valid public key for signature verification",
+          );
         }
+      } else {
+        res.error = new InvalidClientError(
+          "private_key_jwt authentication requires matching 'sub' and 'iss' claims in the JWT",
+        );
       }
     }
 

@@ -12,6 +12,7 @@
  * @see https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication
  */
 
+import { InvalidClientError } from "../errors.ts";
 import { JwtDecode, JwtPayload, JwtVerify } from "../utils/jwt_types.ts";
 import { ClientAuthMethod, ClientAuthMethodResponse } from "./types.ts";
 
@@ -192,26 +193,45 @@ export class ClientSecretJwt implements ClientAuthMethod {
 
       const decoded = await this.#jwtDecode(body.client_assertion);
 
-      if (decoded.aud && typeof decoded.aud === "string") {
-        res.clientId = decoded.aud;
-        const clientSecret = await this.#handler(decoded.aud, decoded, body.client_assertion);
+      // RFC 7523 compliance: Both must exist and they must match the client_id
+      if (typeof decoded.sub === "string" && decoded.sub === decoded.iss) {
+        res.clientId = decoded.sub;
+        const clientSecret = await this.#handler(decoded.sub, decoded, body.client_assertion);
 
         if (clientSecret) {
-          const { payload } = await this.#jwtVerify(
-            body.client_assertion,
-            typeof clientSecret === "string"
-              ? new TextEncoder().encode(clientSecret)
-              : clientSecret,
-            {
-              algorithms: this.algorithms,
-            },
-          );
-          if (payload) {
-            res.clientSecret = typeof clientSecret === "string"
-              ? clientSecret
-              : new TextDecoder().decode(clientSecret);
+          try {
+            const { payload } = await this.#jwtVerify(
+              body.client_assertion,
+              typeof clientSecret === "string"
+                ? new TextEncoder().encode(clientSecret)
+                : clientSecret,
+              {
+                algorithms: this.algorithms,
+              },
+            );
+            if (payload) {
+              res.clientSecret = typeof clientSecret === "string"
+                ? clientSecret
+                : new TextDecoder().decode(clientSecret);
+            } else {
+              res.error = new InvalidClientError(
+                "client_secret_jwt authentication failed: invalid signature or algorithm",
+              );
+            }
+          } catch (_err) {
+            res.error = new InvalidClientError(
+              "client_secret_jwt authentication failed: invalid signature or algorithm",
+            );
           }
+        } else {
+          res.error = new InvalidClientError(
+            "client_secret_jwt authentication requires a valid client secret for signature verification",
+          );
         }
+      } else {
+        res.error = new InvalidClientError(
+          "client_secret_jwt authentication requires matching 'sub' and 'iss' claims in the JWT",
+        );
       }
     }
 

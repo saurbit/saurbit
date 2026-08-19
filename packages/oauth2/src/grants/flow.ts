@@ -370,7 +370,10 @@ export abstract class OAuth2Flow {
         const v = await amInstance.extractClientCredentials(req.clone());
         if (v.hasAuthMethod) {
           method = amInstance.method;
-          if (!v.clientId) {
+          if (v.error) {
+            error = v.error;
+            break;
+          } else if (!v.clientId) {
             error = new InvalidRequestError(
               `${amInstance.method} authentication requires client_id`,
             );
@@ -381,7 +384,7 @@ export abstract class OAuth2Flow {
           } else {
             clientId = v.clientId;
             clientSecret = v.clientSecret;
-            error = undefined;
+            error = v.error;
             break;
           }
         }
