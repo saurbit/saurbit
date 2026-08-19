@@ -1,4 +1,4 @@
-import type { JWTPayload } from "jose";
+import type { JWTClaimVerificationOptions, JWTPayload } from "jose";
 
 /**
  * Represents an RSA public or private key in JSON Web Key (JWK) format.
@@ -51,6 +51,12 @@ export interface RawKey {
   /** RSA modulus, Base64URL-encoded. Together with `e`, forms the RSA public key. */
   n: string;
 }
+
+/**
+ * JWT Claims Set verification options.
+ * Re-exported from [jose](https://github.com/panva/jose)'s `JWTClaimVerificationOptions` interface.
+ */
+export type JwtClaimVerificationOptions = JWTClaimVerificationOptions;
 
 /**
  * Persists the timestamp of the last JWKS key rotation.

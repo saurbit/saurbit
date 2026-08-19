@@ -5,6 +5,7 @@ import {
   importJWK,
   jwtVerify,
 } from "jose";
+import { JwtClaimVerificationOptions } from "./types.ts";
 
 /**
  * Verifies a JWT using the provided secret or key and returns the decoded payload.
@@ -23,6 +24,19 @@ export const verifyJwt: JwtVerify = async (jwt, secretOrKey, options) => {
   const { payload } = await jwtVerify(jwt, secretOrKey, options);
   return payload;
 };
+
+/**
+ * Creates a JWT verifier function with the specified claim verification options.
+ *
+ * @param options - The JWT claim verification options.
+ * @returns A `JwtVerify` function configured with the specified options.
+ */
+export function createJwtVerifier(options: JwtClaimVerificationOptions): JwtVerify {
+  return async (jwt, secretOrKey, opts) => {
+    const { payload } = await jwtVerify(jwt, secretOrKey, { ...options, ...opts });
+    return payload;
+  };
+}
 
 /**
  * Decodes a JWT payload **without** verifying its signature.

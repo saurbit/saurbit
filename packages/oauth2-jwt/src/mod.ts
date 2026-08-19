@@ -7,7 +7,9 @@ export { JwksRotator, type JwksRotatorOptions } from "./jwks_rotator.ts";
 export {
   calculateJwkThumbprint,
   createDPoPJwkVerifier,
+  createJwtVerifier,
   decodeJwt,
+  type DPoPJwkVerifierConfig,
   verifyJwk,
   verifyJwt,
 } from "./methods.ts";
@@ -16,6 +18,7 @@ export type {
   JwksKeyStore,
   JwksRotationTimestampStore,
   JwtAuthority,
+  JwtClaimVerificationOptions,
   JwtSigner,
   JwtVerifier,
   KeyGenerator,
