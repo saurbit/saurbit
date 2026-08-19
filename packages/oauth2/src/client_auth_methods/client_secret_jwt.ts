@@ -200,7 +200,7 @@ export class ClientSecretJwt implements ClientAuthMethod {
 
         if (clientSecret) {
           try {
-            const { payload } = await this.#jwtVerify(
+            const payload = await this.#jwtVerify(
               body.client_assertion,
               typeof clientSecret === "string"
                 ? new TextEncoder().encode(clientSecret)

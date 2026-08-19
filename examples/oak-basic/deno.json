@@ -5,9 +5,12 @@
   "tasks": {
     "check": "deno check **/*.ts",
     "dev": "deno run --allow-net --allow-env --watch main.ts",
-    "start": "deno run --allow-net --allow-env main.ts"
+    "dev:ca": "deno run --allow-net --allow-env --watch main_ca.ts",
+    "start": "deno run --allow-net --allow-env main.ts",
+    "start:client": "deno run --allow-net client.ts"
   },
   "imports": {
-    "@oak/oak": "jsr:@oak/oak@^17.2.0"
+    "@oak/oak": "jsr:@oak/oak@^17.2.0",
+    "jose": "npm:jose@^6.2.2"
   }
 }

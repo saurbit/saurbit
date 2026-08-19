@@ -97,7 +97,7 @@ export class PrivateKeyJwt implements ClientAuthMethod {
     clientId: string,
     decoded: JwtPayload,
     clientAssertion: string,
-  ) => Promise<Uint8Array | string | null>;
+  ) => Promise<object | null>;
 
   /**
    * to avoid adding jose as a dependency for users who don't need JWT client authentication,
@@ -155,7 +155,7 @@ export class PrivateKeyJwt implements ClientAuthMethod {
       clientId: string,
       decoded: JwtPayload,
       clientAssertion: string,
-    ) => Promise<Uint8Array | string | null>,
+    ) => Promise<object | null>,
   ): this {
     this.#handler = handler;
     return this;
@@ -216,9 +216,9 @@ export class PrivateKeyJwt implements ClientAuthMethod {
 
         if (publicKey) {
           try {
-            const { payload } = await this.#jwtVerify(
+            const payload = await this.#jwtVerify(
               body.client_assertion,
-              typeof publicKey === "string" ? new TextEncoder().encode(publicKey) : publicKey,
+              publicKey,
               {
                 algorithms: this.algorithms,
               },

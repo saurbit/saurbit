@@ -55,16 +55,15 @@ const privateKeyJwt = new PrivateKeyJwt(decodeJwt, verifyJwt);
 
 ### `createJwtVerify`
 
-Creates a `JwtVerify` function with pre-configured claim verification options (issuer, audience, etc.). Useful when you want to reuse the same verification settings across multiple
-calls.
+Creates a `JwtVerify` function with pre-configured claim verification options (issuer, audience,
+etc.). Useful when you want to reuse the same verification settings across multiple calls.
 
 ```ts
 import { ClientSecretJwt } from "@saurbit/oauth2";
 import { createJwtVerify, decodeJwt } from "@saurbit/oauth2-jwt";
 
 const verifyJwt = createJwtVerify({
-  issuer: "https://auth.example.com",
-  audience: "my-client",
+  audience: "https://auth.example.com/token",
 });
 
 const clientSecretJwt = new ClientSecretJwt(decodeJwt, verifyJwt);

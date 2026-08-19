@@ -47,7 +47,7 @@ export type JwtDecode = (jwt: string) => JwtPayload | Promise<JwtPayload>;
  */
 export type JwtVerify = (
   jwt: string,
-  key: Uint8Array,
+  key: Uint8Array | object,
   options?: { algorithms?: string[] },
 ) => Promise<JwtPayload>;
 

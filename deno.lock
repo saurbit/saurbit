@@ -236,7 +236,8 @@
       },
       "examples/oak-basic": {
         "dependencies": [
-          "jsr:@oak/oak@^17.2.0"
+          "jsr:@oak/oak@^17.2.0",
+          "npm:jose@^6.2.2"
         ]
       },
       "packages/hono-oauth2": {
