@@ -31,7 +31,7 @@ export const verifyJwt: JwtVerify = async (jwt, secretOrKey, options) => {
  * @param options - The JWT claim verification options.
  * @returns A `JwtVerify` function configured with the specified options.
  */
-export function createJwtVerifier(options: JwtClaimVerificationOptions): JwtVerify {
+export function createJwtVerify(options: JwtClaimVerificationOptions): JwtVerify {
   return async (jwt, secretOrKey, opts) => {
     const { payload } = await jwtVerify(jwt, secretOrKey, { ...options, ...opts });
     return payload;
@@ -86,7 +86,7 @@ export interface DPoPJwkVerifierConfig {
    *
    * @example
    * ```ts
-   * const verifier = createDPoPJwkVerifier({ algorithms: ["ES256", "PS256"] });
+   * const verifier = createDPoPJwkVerify({ algorithms: ["ES256", "PS256"] });
    * ```
    *
    * @default ["ES256", "ES384", "ES512", "PS256", "PS384", "PS512"]
@@ -100,7 +100,7 @@ export interface DPoPJwkVerifierConfig {
  * @param config - The configuration for the DPoP JWK verifier.
  * @returns A `JwkVerify` function that verifies DPoP proofs using the specified algorithms.
  */
-export function createDPoPJwkVerifier(config: DPoPJwkVerifierConfig): JwkVerify {
+export function createDPoPJwkVerify(config: DPoPJwkVerifierConfig): JwkVerify {
   const algorithms = Array.isArray(config.algorithms) && config.algorithms.length
     ? config.algorithms
     : ["ES256", "ES384", "ES512", "PS256", "PS384", "PS512"];

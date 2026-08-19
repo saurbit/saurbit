@@ -66,18 +66,18 @@ const dpop = new DPoPTokenType(verifyJwk, calculateJwkThumbprint, createInMemory
 
 `verifyJwk` only accepts `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, and `PS512` algorithm tokens.
 You can also customize the allowed algorithms by passing an array of algorithm names to
-`createDPoPJwkVerifier`.
+`createDPoPJwkVerify`.
 
-### `createDPoPJwkVerifier`
+### `createDPoPJwkVerify`
 
 Used to create a `JwkVerify` function with a custom set of allowed algorithms.
 
 ```ts
 import { createInMemoryReplayStore, DPoPTokenType } from "@saurbit/oauth2";
-import { calculateJwkThumbprint, createDPoPJwkVerifier, verifyJwk } from "@saurbit/oauth2-jwt";
+import { calculateJwkThumbprint, createDPoPJwkVerify, verifyJwk } from "@saurbit/oauth2-jwt";
 
 const dpop = new DPoPTokenType(
-  createDPoPJwkVerifier(["ES256", "PS256"]), // only allow ES256 and PS256 algorithms
+  createDPoPJwkVerify(["ES256", "PS256"]), // only allow ES256 and PS256 algorithms
   calculateJwkThumbprint,
   createInMemoryReplayStore(),
 );
