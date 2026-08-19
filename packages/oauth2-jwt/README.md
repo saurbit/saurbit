@@ -53,6 +53,23 @@ import { decodeJwt, verifyJwt } from "@saurbit/oauth2-jwt";
 const privateKeyJwt = new PrivateKeyJwt(decodeJwt, verifyJwt);
 ```
 
+### `createJwtVerify`
+
+Creates a `JwtVerify` function with pre-configured claim verification options (issuer, audience, etc.). Useful when you want to reuse the same verification settings across multiple
+calls.
+
+```ts
+import { ClientSecretJwt } from "@saurbit/oauth2";
+import { createJwtVerify, decodeJwt } from "@saurbit/oauth2-jwt";
+
+const verifyJwt = createJwtVerify({
+  issuer: "https://auth.example.com",
+  audience: "my-client",
+});
+
+const clientSecretJwt = new ClientSecretJwt(decodeJwt, verifyJwt);
+```
+
 ### `verifyJwk`
 
 Used by `DPoPTokenType` for Demonstration of Proof-of-Possession token validation.
