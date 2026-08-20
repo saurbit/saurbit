@@ -14,7 +14,7 @@ await build({
   shims: {},
   package: {
     name: "@saurbit/oauth2-jwt",
-    version: "0.1.7",
+    version: "0.1.8",
     description: "JWT utilities for @saurbit/oauth2 (jose-based)",
     license: "MIT",
     repository: {
@@ -23,14 +23,14 @@ await build({
     },
     keywords: ["oauth2", "jwt", "jose", "jwks", "oidc"],
     peerDependencies: {
-      "@saurbit/oauth2": "^0.1.8",
+      "@saurbit/oauth2": "^0.1.11",
     },
   },
   // Map workspace imports to their npm equivalents
   mappings: {
     [import.meta.resolve("@saurbit/oauth2")]: {
       name: "@saurbit/oauth2",
-      version: "^0.1.8",
+      version: "^0.1.11",
       peerDependency: true,
     },
   },
