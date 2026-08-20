@@ -61,7 +61,7 @@ export type JwkVerify = (jwt: string) => Promise<{
   payload: JwtPayload;
   protectedHeader: {
     alg?: string;
-    b64?: true;
+    b64?: boolean;
     crit?: string[];
     [propName: string]: unknown;
   };
