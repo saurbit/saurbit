@@ -1,29 +1,14 @@
-// main_ca.ts for Oak framework with Client Credentials Flow and Private Key JWT authentication
+// main_cas.ts for Oak framework with Client Credentials Flow and Client Secret JWT authentication
 
 import { Application, Router } from "@oak/oak";
 import {
   ClientCredentialsFlowBuilder,
-  PrivateKeyJwt,
-  PrivateKeyJwtAlgorithms,
+  ClientSecretJwt,
+  ClientSecretJwtAlgorithms,
 } from "@saurbit/oauth2";
 import { createJwtVerify, decodeJwt } from "@saurbit/oauth2-jwt";
-import { exportJWK, importSPKI } from "jose";
 
-const CLIENT_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
-MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA8iGQANAR1Nm9IU2Y0pCo
-sf6Wrw7JsURKNIPLouB+yTDtQRzTcioKh5iufTyQTThmhXBh8OPpAlrtmOghIdcp
-aZpL91d8MmbDu5ADBV3AxBEYIt+pbttICFyAnjJs4MoAfZlEPDZSRG0ZM1qn6VZT
-hutDgJgyFU6Tx6nhxqKF9IVejGAAXu2/kv2c6USL6lL9uQl4Tny1S8gQSYpiMMi4
-v0hihxWOYb2KCS1t+Stbq8nEXQ+/yU3AclxdPAIeghsVFR5IKSjWmhg4HoTxVHur
-RR8oW4jzpSFGn+Ddunkv/jfu5qFwPY1j4z5kiWVjFWTN5ntqDhUnzOfcSmLPTs6v
-wMcPJBD3ULFk2dgBeGhHqmhMatExhO87yEK6YxnUrBVxsKS4INazbiJeOL5e8F5A
-wZ+fayDpoxOeredv9UQxhXx1w9Q2rInBbZI0jVgoWhtM+Pp4H2lfjW6F8JnTRAH7
-5+yb+SM8yQLkyw9TZ45oHdDh9phC+kYspI7lswTz6UJ3EmPKmrPseJ+pCxqKTVHf
-R8a+7So32EpQR7l1XQCr1cZCoRXF1KtDtVTs4v+l/xJJ1yd3ABH1aAl3ZCukxWUG
-yD9A0GRYf0JuRDk6zK08z/Q2fvBR1MZTn6WAx7vAxKXomdBipGYklXwMf+5ICXAK
-2LQJpf3DaRNpPSCgQpRR8Z8CAwEAAQ==
------END PUBLIC KEY-----
-`;
+const CLIENT_SECRET = `abcd1234efgh5678ijkl9012mnop3456qrst7890uvwx1234yzab5678cdef9012`;
 
 const flow = new ClientCredentialsFlowBuilder({
   securitySchemeName: "clientCredentials",
@@ -33,22 +18,19 @@ const flow = new ClientCredentialsFlowBuilder({
     "write": "Write access to protected resources",
   })
   .setTokenEndpoint("/token")
+  .clientSecretBasicAuthenticationMethod()
   .addClientAuthenticationMethod(
-    new PrivateKeyJwt(
+    new ClientSecretJwt(
       decodeJwt,
       createJwtVerify({
         audience: "http://localhost:8000/token",
       }),
     )
-      .addAlgorithm(PrivateKeyJwtAlgorithms.RS256)
-      .getPublicKeyForClient(async (clientId) => {
+      .addAlgorithm(ClientSecretJwtAlgorithms.HS256)
+      .getClientSecret((clientId) => {
         // Implement logic to retrieve the public key for the given client ID.
         if (clientId === "example-client") {
-          // Import using jose to get the CryptoKey
-          const publicKey = await importSPKI(CLIENT_PUBLIC_KEY, "RS256");
-          // Export the public key to JWK format for verification
-          const jwk = await exportJWK(publicKey);
-          return jwk;
+          return Promise.resolve(CLIENT_SECRET);
         }
         return Promise.resolve(null);
       }),

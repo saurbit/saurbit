@@ -1,3 +1,5 @@
+// client_capk.ts private key JWT client
+
 import { importPKCS8, SignJWT } from "jose";
 
 const CLIENT_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
