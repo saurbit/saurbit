@@ -23,14 +23,14 @@ await build({
     },
     keywords: ["oauth2", "jwt", "jose", "jwks", "oidc"],
     peerDependencies: {
-      "@saurbit/oauth2": "^0.1.11",
+      "@saurbit/oauth2": "^0.1.12",
     },
   },
   // Map workspace imports to their npm equivalents
   mappings: {
     [import.meta.resolve("@saurbit/oauth2")]: {
       name: "@saurbit/oauth2",
-      version: "^0.1.11",
+      version: "^0.1.12",
       peerDependency: true,
     },
   },

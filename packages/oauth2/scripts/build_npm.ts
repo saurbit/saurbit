@@ -10,7 +10,7 @@ await build({
   },
   package: {
     name: "@saurbit/oauth2",
-    version: "0.1.11",
+    version: "0.1.12",
     description: "OAuth2 and OpenID Connect server-side flows",
     license: "MIT",
     repository: {
