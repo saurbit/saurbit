@@ -6,7 +6,7 @@ import {
   PrivateKeyJwt,
   PrivateKeyJwtAlgorithms,
 } from "@saurbit/oauth2";
-import { createJwtVerify, decodeJwt } from "@saurbit/oauth2-jwt";
+import { createClientAssertionJwtVerify, decodeJwt } from "@saurbit/oauth2-jwt";
 import { exportJWK, importSPKI } from "jose";
 
 const CLIENT_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
@@ -37,7 +37,7 @@ const flow = new ClientCredentialsFlowBuilder({
   .addClientAuthenticationMethod(
     new PrivateKeyJwt(
       decodeJwt,
-      createJwtVerify({
+      createClientAssertionJwtVerify({
         audience: "http://localhost:8000/token",
       }),
     )

@@ -1,4 +1,10 @@
-import type { JwkThumbprintCalculator, JwkVerify, JwtDecode, JwtVerify } from "@saurbit/oauth2";
+import type {
+  ClientAssertionJwtVerify,
+  JwkThumbprintCalculator,
+  JwkVerify,
+  JwtDecode,
+  JwtVerify,
+} from "@saurbit/oauth2";
 import {
   calculateJwkThumbprint as joseCalculateJwkThumbprint,
   decodeJwt as joseDecodeJwt,
@@ -34,6 +40,51 @@ export const verifyJwt: JwtVerify = async (jwt, secretOrKey, options) => {
 export function createJwtVerify(options: JwtClaimVerificationOptions): JwtVerify {
   return async (jwt, secretOrKey, opts) => {
     const { payload } = await jwtVerify(jwt, secretOrKey, { ...options, ...opts });
+    return payload;
+  };
+}
+
+/**
+ * Verifies a client assertion JWT using the provided secret or key and returns the decoded payload.
+ *
+ * Pass this as the `ClientAssertionJwtVerify` argument to `ClientSecretJwt` or `PrivateKeyJwt`
+ * from `@saurbit/oauth2`.
+ *
+ * @param context - The client assertion context containing the client ID, assertion, and type.
+ * @param _request - The HTTP request object containing the client assertion.
+ * @param secretOrKey - The secret (`string` / `Uint8Array`) or `CryptoKey` for verification.
+ * @param options - Optional jose verification options (algorithms, audience, issuer, etc.).
+ * @returns The verified JWT payload.
+ * @throws If the token is invalid, expired, or the signature does not match.
+ */
+export const verifyClientAssertionJwt: ClientAssertionJwtVerify = async (
+  context,
+  _request,
+  secretOrKey,
+  options,
+) => {
+  const { payload } = await jwtVerify(
+    context.clientAssertion,
+    secretOrKey,
+    { ...options, issuer: context.clientId, subject: context.clientId },
+  );
+  return payload;
+};
+
+/**
+ * Creates a client assertion JWT verifier function with the specified claim verification options.
+ *
+ * @param options - The JWT claim verification options.
+ * @returns A `ClientAssertionJwtVerify` function configured with the specified options.
+ */
+export function createClientAssertionJwtVerify(
+  options: JwtClaimVerificationOptions,
+): ClientAssertionJwtVerify {
+  return async (context, _request, secretOrKey, opts) => {
+    const { payload } = await jwtVerify(context.clientAssertion, secretOrKey, {
+      ...options,
+      ...opts,
+    });
     return payload;
   };
 }

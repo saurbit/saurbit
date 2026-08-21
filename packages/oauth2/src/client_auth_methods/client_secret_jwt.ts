@@ -13,7 +13,7 @@
  */
 
 import { InvalidClientError } from "../errors.ts";
-import { JwtDecode, JwtPayload, JwtVerify } from "../utils/jwt_types.ts";
+import { ClientAssertionJwtVerify, JwtDecode, JwtPayload } from "../utils/jwt_types.ts";
 import { ClientAuthMethod, ClientAuthMethodResponse } from "./types.ts";
 
 /**
@@ -94,7 +94,7 @@ export class ClientSecretJwt implements ClientAuthMethod {
    * to avoid adding jose as a dependency for users who don't need JWT client authentication,
    * the JWT decoding and verification logic is injected via the constructor
    */
-  #jwtVerify: JwtVerify;
+  #jwtVerify: ClientAssertionJwtVerify;
 
   /**
    * Creates a new `ClientSecretJwt` instance.
@@ -105,7 +105,7 @@ export class ClientSecretJwt implements ClientAuthMethod {
    */
   constructor(
     jwtDecode: JwtDecode,
-    jwtVerify: JwtVerify,
+    jwtVerify: ClientAssertionJwtVerify,
   ) {
     this.#handler = () => Promise.resolve(null);
     this.#jwtDecode = jwtDecode;
@@ -166,6 +166,8 @@ export class ClientSecretJwt implements ClientAuthMethod {
       hasAuthMethod: false,
     };
 
+    const request = req.clone(); // Clone the request to avoid consuming the body
+
     // Extract info from the request body (either form-urlencoded or JSON)
     let body: unknown;
     const contentType = req.headers.get("content-type") || "";
@@ -201,7 +203,12 @@ export class ClientSecretJwt implements ClientAuthMethod {
         if (clientSecret) {
           try {
             const payload = await this.#jwtVerify(
-              body.client_assertion,
+              {
+                clientId: decoded.sub,
+                clientAssertion: body.client_assertion,
+                clientAssertionType: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+              },
+              request,
               typeof clientSecret === "string"
                 ? new TextEncoder().encode(clientSecret)
                 : clientSecret,

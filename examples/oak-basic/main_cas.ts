@@ -6,7 +6,7 @@ import {
   ClientSecretJwt,
   ClientSecretJwtAlgorithms,
 } from "@saurbit/oauth2";
-import { createJwtVerify, decodeJwt } from "@saurbit/oauth2-jwt";
+import { createClientAssertionJwtVerify, decodeJwt } from "@saurbit/oauth2-jwt";
 
 const CLIENT_SECRET = `abcd1234efgh5678ijkl9012mnop3456qrst7890uvwx1234yzab5678cdef9012`;
 
@@ -22,13 +22,13 @@ const flow = new ClientCredentialsFlowBuilder({
   .addClientAuthenticationMethod(
     new ClientSecretJwt(
       decodeJwt,
-      createJwtVerify({
+      createClientAssertionJwtVerify({
         audience: "http://localhost:8000/token",
       }),
     )
       .addAlgorithm(ClientSecretJwtAlgorithms.HS256)
       .getClientSecret((clientId) => {
-        // Implement logic to retrieve the public key for the given client ID.
+        // Implement logic to retrieve the client secret for the given client ID.
         if (clientId === "example-client") {
           return Promise.resolve(CLIENT_SECRET);
         }
@@ -37,7 +37,7 @@ const flow = new ClientCredentialsFlowBuilder({
   )
   .getClient((tokenRequest) => {
     // Implement logic to retrieve and validate the client.
-    // the client_assertion is verified by the PrivateKeyJwt method, so we only need to check the clientId here
+    // the client_assertion is verified by the ClientSecretJwt method, so we only need to check the clientId here
     if (
       tokenRequest.clientId === "example-client"
     ) {

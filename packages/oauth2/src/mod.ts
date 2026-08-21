@@ -192,6 +192,8 @@ export type { TokenType, TokenTypeValidationResponse } from "./token_types/types
 //#region Utilities
 
 export type {
+  ClientAssertionJwtContext,
+  ClientAssertionJwtVerify,
   JwkThumbprintCalculator,
   JwkVerify,
   JwtDecode,

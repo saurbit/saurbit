@@ -38,7 +38,7 @@ export interface JwtPayload {
 export type JwtDecode = (jwt: string) => JwtPayload | Promise<JwtPayload>;
 
 /**
- * A function that verifies a JWT using a symmetric key (e.g. HMAC).
+ * A function that verifies a JWT using a symmetric or asymmetric key (e.g. HMAC).
  *
  * @param jwt - The compact serialized JWT string to verify.
  * @param key - The raw symmetric key bytes used for verification.
@@ -47,6 +47,34 @@ export type JwtDecode = (jwt: string) => JwtPayload | Promise<JwtPayload>;
  */
 export type JwtVerify = (
   jwt: string,
+  key: Uint8Array | object,
+  options?: { algorithms?: string[] },
+) => Promise<JwtPayload>;
+
+/**
+ * Client assertion context used for verifying JWTs in client authentication methods.
+ */
+export type ClientAssertionJwtContext = {
+  /** The client ID extracted from the `aud` claim of the JWT. */
+  clientId: string;
+  /** The raw client assertion JWT string. */
+  clientAssertion: string;
+  /** The type of the client assertion, which must be `"urn:ietf:params:oauth:client-assertion-type:jwt-bearer"`. */
+  clientAssertionType: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
+};
+
+/**
+ * A function that verifies a client assertion JWT in the context of OAuth 2.0 client authentication.
+ *
+ * @param context - The client assertion context containing the client ID, assertion, and type.
+ * @param request - The HTTP request object containing the client assertion.
+ * @param key - The raw symmetric key bytes or public key object used for verification.
+ * @param options - Optional verification options, such as accepted algorithms.
+ * @returns The verified and decoded JWT payload.
+ */
+export type ClientAssertionJwtVerify = (
+  context: ClientAssertionJwtContext,
+  request: Request,
   key: Uint8Array | object,
   options?: { algorithms?: string[] },
 ) => Promise<JwtPayload>;

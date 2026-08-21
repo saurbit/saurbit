@@ -6,10 +6,12 @@ export { JwksRotator, type JwksRotatorOptions } from "./jwks_rotator.ts";
 
 export {
   calculateJwkThumbprint,
+  createClientAssertionJwtVerify,
   createDPoPJwkVerify,
   createJwtVerify,
   decodeJwt,
   type DPoPJwkVerifierConfig,
+  verifyClientAssertionJwt,
   verifyJwk,
   verifyJwt,
 } from "./methods.ts";
