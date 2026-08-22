@@ -405,9 +405,9 @@ export const HtmlFormContent = (props: {
               transform: translateY(1px);
             }
           </style>
-        </head>
-        <body>
-          <form class="card" method="POST">
+      </head>
+      <body>
+        <form class="card" method="POST">
             <p class="subtitle">Sign in to continue</p>
             ${props.errorMessage
               ? html`
@@ -462,6 +462,6 @@ export const HtmlFormContent = (props: {
               <button class="btn" type="submit">Sign in</button>
             </div>
           </form>
-        </body>
-      </html>
-    `;
+      </body>
+    </html>
+  `;

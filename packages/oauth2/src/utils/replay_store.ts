@@ -36,7 +36,7 @@ export interface ReplayStore<T extends string | number> {
  */
 export class InMemoryReplayStore<T extends string | number = string | number>
   implements ReplayStore<T> {
-  private values: Record<string, number> = {};
+  private values: Record<string, ReturnType<typeof setTimeout>> = {};
 
   /**
    * Returns `true` if the value is currently tracked.
