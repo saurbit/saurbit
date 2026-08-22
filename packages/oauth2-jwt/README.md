@@ -28,45 +28,66 @@ deno add jsr:@saurbit/oauth2-jwt
 
 ## JWT Utilities
 
-`@saurbit/oauth2-jwt` provides three ready-made functions that satisfy the `JwtVerify`, `JwtDecode`,
-and `JwkVerify` interfaces expected by `@saurbit/oauth2`.
+`@saurbit/oauth2-jwt` provides ready-made functions that satisfy the `JwtVerify`, `JwtDecode`,
+`ClientAssertionJwtVerify`, and `JwkVerify` interfaces expected by `@saurbit/oauth2`.
 
-### `verifyJwt` and `decodeJwt`
+### `verifyClientAssertionJwt` and `decodeJwt`
 
 Used by the `ClientSecretJwt` and `PrivateKeyJwt` client authentication methods.
+`verifyClientAssertionJwt` automatically enforces `issuer` and `subject` equal to the client ID as
+required by RFC 7523.
 
 **`ClientSecretJwt`**
 
 ```ts
 import { ClientSecretJwt } from "@saurbit/oauth2";
-import { decodeJwt, verifyJwt } from "@saurbit/oauth2-jwt";
+import { decodeJwt, verifyClientAssertionJwt } from "@saurbit/oauth2-jwt";
 
-const clientSecretJwt = new ClientSecretJwt(decodeJwt, verifyJwt);
+const clientSecretJwt = new ClientSecretJwt(decodeJwt, verifyClientAssertionJwt);
 ```
 
 **`PrivateKeyJwt`**
 
 ```ts
 import { PrivateKeyJwt } from "@saurbit/oauth2";
-import { decodeJwt, verifyJwt } from "@saurbit/oauth2-jwt";
+import { decodeJwt, verifyClientAssertionJwt } from "@saurbit/oauth2-jwt";
 
-const privateKeyJwt = new PrivateKeyJwt(decodeJwt, verifyJwt);
+const privateKeyJwt = new PrivateKeyJwt(decodeJwt, verifyClientAssertionJwt);
 ```
 
-### `createJwtVerify`
+### `createClientAssertionJwtVerify`
 
-Creates a `JwtVerify` function with pre-configured claim verification options (issuer, audience,
-etc.). Useful when you want to reuse the same verification settings across multiple calls.
+Creates a `ClientAssertionJwtVerify` function with pre-configured or dynamically resolved claim
+verification options. Useful when you need to enforce additional claims (e.g. `audience`) or when
+verification options depend on the request context.
 
 ```ts
 import { ClientSecretJwt } from "@saurbit/oauth2";
-import { createJwtVerify, decodeJwt } from "@saurbit/oauth2-jwt";
+import { createClientAssertionJwtVerify, decodeJwt } from "@saurbit/oauth2-jwt";
 
-const verifyJwt = createJwtVerify({
+// Static options
+const verifyClientAssertion = createClientAssertionJwtVerify({
   audience: "https://auth.example.com/token",
 });
 
-const clientSecretJwt = new ClientSecretJwt(decodeJwt, verifyJwt);
+const clientSecretJwt = new ClientSecretJwt(decodeJwt, verifyClientAssertion);
+```
+
+```ts
+import { PrivateKeyJwt } from "@saurbit/oauth2";
+import { createClientAssertionJwtVerify, decodeJwt } from "@saurbit/oauth2-jwt";
+
+// Dynamic options from context
+const verifyClientAssertion = createClientAssertionJwtVerify(
+  async (context, request) => {
+    const url = new URL(request.url);
+    return {
+      audience: url.origin + url.pathname,
+    };
+  },
+);
+
+const privateKeyJwt = new PrivateKeyJwt(decodeJwt, verifyClientAssertion);
 ```
 
 ### `verifyJwk`

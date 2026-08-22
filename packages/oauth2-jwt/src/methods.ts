@@ -17,9 +17,6 @@ import { JwtClaimVerificationOptions } from "./types.ts";
  * Verifies a JWT using the provided secret or key and returns the decoded payload.
  * Wraps [jose](https://github.com/panva/jose)'s `jwtVerify`.
  *
- * Pass this as the `JwtVerify` argument to `ClientSecretJwt` or `PrivateKeyJwt`
- * from `@saurbit/oauth2`.
- *
  * @param jwt - The compact serialized JWT to verify.
  * @param secretOrKey - The secret (`string` / `Uint8Array`) or `CryptoKey` for verification.
  * @param options - Optional jose verification options (algorithms, audience, issuer, etc.).
@@ -74,15 +71,36 @@ export const verifyClientAssertionJwt: ClientAssertionJwtVerify = async (
 /**
  * Creates a client assertion JWT verifier function with the specified claim verification options.
  *
- * @param options - The JWT claim verification options.
+ * @param callback - A callback function that returns the JWT claim verification options based on the client assertion context.
  * @returns A `ClientAssertionJwtVerify` function configured with the specified options.
  */
 export function createClientAssertionJwtVerify(
-  options: JwtClaimVerificationOptions,
+  callback: (
+    ...args: Parameters<ClientAssertionJwtVerify>
+  ) => Promise<JwtClaimVerificationOptions> | JwtClaimVerificationOptions,
+): ClientAssertionJwtVerify;
+/**
+ * Creates a client assertion JWT verifier function with the specified claim verification options.
+ *
+ * @param verificationOptions - The JWT claim verification options.
+ * @returns A `ClientAssertionJwtVerify` function configured with the specified options.
+ */
+export function createClientAssertionJwtVerify(
+  verificationOptions: JwtClaimVerificationOptions,
+): ClientAssertionJwtVerify;
+export function createClientAssertionJwtVerify(
+  verificationOptions:
+    | JwtClaimVerificationOptions
+    | ((
+      ...args: Parameters<ClientAssertionJwtVerify>
+    ) => Promise<JwtClaimVerificationOptions> | JwtClaimVerificationOptions),
 ): ClientAssertionJwtVerify {
   return async (context, _request, secretOrKey, opts) => {
+    const resolvedVerificationOptions = typeof verificationOptions === "function"
+      ? await verificationOptions(context, _request, secretOrKey, opts)
+      : verificationOptions;
     const { payload } = await jwtVerify(context.clientAssertion, secretOrKey, {
-      ...options,
+      ...resolvedVerificationOptions,
       ...opts,
     });
     return payload;

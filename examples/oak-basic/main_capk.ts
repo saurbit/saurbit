@@ -37,9 +37,12 @@ const flow = new ClientCredentialsFlowBuilder({
   .addClientAuthenticationMethod(
     new PrivateKeyJwt(
       decodeJwt,
-      createClientAssertionJwtVerify({
+      createClientAssertionJwtVerify(({ clientId }) => ({
         audience: "http://localhost:8000/token",
-      }),
+        issuer: clientId,
+        subject: clientId,
+        maxTokenAge: 300, // 5 minutes
+      })),
     )
       .addAlgorithm(PrivateKeyJwtAlgorithms.RS256)
       .getPublicKeyForClient(async (clientId) => {
