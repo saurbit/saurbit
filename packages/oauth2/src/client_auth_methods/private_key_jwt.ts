@@ -191,6 +191,7 @@ export class PrivateKeyJwt implements ClientAuthMethod {
     if (contentType.includes("application/x-www-form-urlencoded")) {
       const form = await req.formData();
       body = {
+        client_id: form.get("client_id"),
         client_assertion_type: form.get("client_assertion_type"),
         client_assertion: form.get("client_assertion"),
       };
@@ -213,39 +214,45 @@ export class PrivateKeyJwt implements ClientAuthMethod {
       const decoded = await this.#jwtDecode(body.client_assertion);
 
       if (typeof decoded.sub === "string" && decoded.sub === decoded.iss) {
-        res.clientId = decoded.sub;
-        const publicKey = await this.#handler(decoded.sub, decoded, body.client_assertion);
+        if ("client_id" in body && body.client_id != null && body.client_id != decoded.sub) {
+          res.error = new InvalidClientError(
+            "private_key_jwt authentication requires matching 'sub' and 'client_id'",
+          );
+        } else {
+          res.clientId = decoded.sub;
+          const publicKey = await this.#handler(decoded.sub, decoded, body.client_assertion);
 
-        if (publicKey) {
-          try {
-            const payload = await this.#jwtVerify(
-              {
-                clientId: decoded.sub,
-                clientAssertion: body.client_assertion,
-                clientAssertionType: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-              },
-              request,
-              publicKey,
-              {
-                algorithms: this.algorithms,
-              },
-            );
-            if (payload) {
-              res.clientSecret = body.client_assertion;
-            } else {
+          if (publicKey) {
+            try {
+              const payload = await this.#jwtVerify(
+                {
+                  clientId: decoded.sub,
+                  clientAssertion: body.client_assertion,
+                  clientAssertionType: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                },
+                request,
+                publicKey,
+                {
+                  algorithms: this.algorithms,
+                },
+              );
+              if (payload) {
+                res.clientSecret = body.client_assertion;
+              } else {
+                res.error = new InvalidClientError(
+                  "private_key_jwt authentication failed: invalid signature or algorithm",
+                );
+              }
+            } catch (_err) {
               res.error = new InvalidClientError(
                 "private_key_jwt authentication failed: invalid signature or algorithm",
               );
             }
-          } catch (_err) {
+          } else {
             res.error = new InvalidClientError(
-              "private_key_jwt authentication failed: invalid signature or algorithm",
+              "private_key_jwt authentication requires a valid public key for signature verification",
             );
           }
-        } else {
-          res.error = new InvalidClientError(
-            "private_key_jwt authentication requires a valid public key for signature verification",
-          );
         }
       } else {
         res.error = new InvalidClientError(

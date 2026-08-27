@@ -11,7 +11,7 @@ await build({
   shims: {},
   package: {
     name: "@saurbit/hono-oauth2",
-    version: "0.1.8",
+    version: "0.1.9",
     description: "Adapter for @saurbit/oauth2 flows in Hono applications",
     license: "MIT",
     repository: {
@@ -20,19 +20,19 @@ await build({
     },
     keywords: ["oauth2", "oidc", "hono", "middleware", "adapter"],
     peerDependencies: {
-      "@saurbit/oauth2": "^0.1.13",
-      "hono": "^4.13.3",
+      "@saurbit/oauth2": "^0.1.14",
+      "hono": "^4.13.5",
     },
   },
   mappings: {
     [import.meta.resolve("@saurbit/oauth2")]: {
       name: "@saurbit/oauth2",
-      version: "^0.1.13",
+      version: "^0.1.14",
       peerDependency: true,
     },
-    "npm:hono@^4.13.3": {
+    "npm:hono@^4.13.5": {
       name: "hono",
-      version: "^4.13.3",
+      version: "^4.13.5",
       peerDependency: true,
     },
   },

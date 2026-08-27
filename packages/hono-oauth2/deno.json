@@ -1,6 +1,6 @@
 {
   "name": "@saurbit/hono-oauth2",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts"
@@ -14,7 +14,7 @@
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.19",
-    "hono": "npm:hono@^4.13.3"
+    "hono": "npm:hono@^4.13.5"
   },
   "tasks": {
     "build:npm": "deno run -A scripts/build_npm.ts",

@@ -37,13 +37,15 @@ const flow = new ClientCredentialsFlowBuilder({
   .addClientAuthenticationMethod(
     new PrivateKeyJwt(
       decodeJwt,
-      createClientAssertionJwtVerify(async ({ clientId }, request) => {
+      createClientAssertionJwtVerify(({ clientId }, request) => {
         const url = new URL(request.url);
+        /*
         const clientIdFromForm = (await request.formData()).get("client_id");
 
         if (clientIdFromForm !== null && clientIdFromForm !== clientId) {
           throw new Error("client_id in form does not match client_id in JWT");
         }
+        */
         return {
           audience: url.origin + url.pathname,
           issuer: clientId,

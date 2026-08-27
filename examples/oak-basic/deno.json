@@ -13,6 +13,6 @@
   },
   "imports": {
     "@oak/oak": "jsr:@oak/oak@^17.2.0",
-    "jose": "npm:jose@^6.2.9"
+    "jose": "npm:jose@^6.2.10"
   }
 }

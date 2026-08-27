@@ -174,6 +174,7 @@ export class ClientSecretJwt implements ClientAuthMethod {
     if (contentType.includes("application/x-www-form-urlencoded")) {
       const form = await req.formData();
       body = {
+        client_id: form.get("client_id"),
         client_assertion_type: form.get("client_assertion_type"),
         client_assertion: form.get("client_assertion"),
       };
@@ -197,43 +198,49 @@ export class ClientSecretJwt implements ClientAuthMethod {
 
       // RFC 7523 compliance: Both must exist and they must match the client_id
       if (typeof decoded.sub === "string" && decoded.sub === decoded.iss) {
-        res.clientId = decoded.sub;
-        const clientSecret = await this.#handler(decoded.sub, decoded, body.client_assertion);
+        if ("client_id" in body && body.client_id != null && body.client_id != decoded.sub) {
+          res.error = new InvalidClientError(
+            "client_secret_jwt authentication requires matching 'sub' and 'client_id'",
+          );
+        } else {
+          res.clientId = decoded.sub;
+          const clientSecret = await this.#handler(decoded.sub, decoded, body.client_assertion);
 
-        if (clientSecret) {
-          try {
-            const payload = await this.#jwtVerify(
-              {
-                clientId: decoded.sub,
-                clientAssertion: body.client_assertion,
-                clientAssertionType: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-              },
-              request,
-              typeof clientSecret === "string"
-                ? new TextEncoder().encode(clientSecret)
-                : clientSecret,
-              {
-                algorithms: this.algorithms,
-              },
-            );
-            if (payload) {
-              res.clientSecret = typeof clientSecret === "string"
-                ? clientSecret
-                : new TextDecoder().decode(clientSecret);
-            } else {
+          if (clientSecret) {
+            try {
+              const payload = await this.#jwtVerify(
+                {
+                  clientId: decoded.sub,
+                  clientAssertion: body.client_assertion,
+                  clientAssertionType: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                },
+                request,
+                typeof clientSecret === "string"
+                  ? new TextEncoder().encode(clientSecret)
+                  : clientSecret,
+                {
+                  algorithms: this.algorithms,
+                },
+              );
+              if (payload) {
+                res.clientSecret = typeof clientSecret === "string"
+                  ? clientSecret
+                  : new TextDecoder().decode(clientSecret);
+              } else {
+                res.error = new InvalidClientError(
+                  "client_secret_jwt authentication failed: invalid signature or algorithm",
+                );
+              }
+            } catch (_err) {
               res.error = new InvalidClientError(
                 "client_secret_jwt authentication failed: invalid signature or algorithm",
               );
             }
-          } catch (_err) {
+          } else {
             res.error = new InvalidClientError(
-              "client_secret_jwt authentication failed: invalid signature or algorithm",
+              "client_secret_jwt authentication requires a valid client secret for signature verification",
             );
           }
-        } else {
-          res.error = new InvalidClientError(
-            "client_secret_jwt authentication requires a valid client secret for signature verification",
-          );
         }
       } else {
         res.error = new InvalidClientError(
