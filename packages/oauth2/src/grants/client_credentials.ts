@@ -60,6 +60,9 @@ export interface ClientCredentialsGrantContext {
 
   /** The result of the token type validation. */
   tokenTypeValidation: TokenTypeValidationResponse;
+
+  /** The client authentication method used for this request, if any. */
+  clientAuthMethod?: string | undefined;
 }
 
 /**
@@ -80,6 +83,9 @@ export interface ClientCredentialsTokenRequest {
 
   /** The result of the token type validation. */
   tokenTypeValidation: TokenTypeValidationResponse;
+
+  /** The client authentication method used for this request, if any. */
+  clientAuthMethod?: string | undefined;
 
   /** The requested scopes, if provided in the request body. */
   scope?: string[];
@@ -174,11 +180,12 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
     }
 
     // Validate client authentication credentials using the registered client authentication methods
-    const { clientId, clientSecret, error } = await this.extractClientCredentials(
-      request.clone(),
-      this.clientAuthMethods,
-      this.getTokenEndpointAuthMethods(),
-    );
+    const { clientId, clientSecret, error, method: clientAuthMethod } = await this
+      .extractClientCredentials(
+        request.clone(),
+        this.clientAuthMethods,
+        this.getTokenEndpointAuthMethods(),
+      );
 
     // If the request contains client authentication credentials, validate them
     if (!error) {
@@ -210,6 +217,7 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
         scope: scopeInBody,
         origin,
         tokenTypeValidation: { ...tokenTypeValidationResponse },
+        clientAuthMethod,
       };
 
       // Validate client credentials using the model's getClient() method
@@ -250,6 +258,7 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
         accessTokenLifetime: this.accessTokenLifetime,
         origin,
         tokenTypeValidation: { ...tokenTypeValidationResponse },
+        clientAuthMethod,
       };
 
       // generate access token from client, valid scope,

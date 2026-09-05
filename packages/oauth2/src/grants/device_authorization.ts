@@ -72,6 +72,9 @@ export interface DeviceAuthorizationGrantContext {
 
   /** The result of the token type validation. */
   tokenTypeValidation: TokenTypeValidationResponse;
+
+  /** The client authentication method used for this request, if any. */
+  clientAuthMethod?: string | undefined;
 }
 
 /**
@@ -95,6 +98,9 @@ export interface DeviceAuthorizationTokenRequest {
 
   /** The result of the token type validation. */
   tokenTypeValidation: TokenTypeValidationResponse;
+
+  /** The client authentication method used for this request, if any. */
+  clientAuthMethod?: string | undefined;
 }
 
 /**
@@ -756,7 +762,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
     }
 
     // Validate client authentication credentials using the registered client authentication methods
-    const { clientId, clientSecret, error } = await this
+    const { clientId, clientSecret, error, method: clientAuthMethod } = await this
       .extractClientCredentials(
         request.clone(),
         this.clientAuthMethods,
@@ -799,6 +805,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
           deviceCode: deviceCodeInBody,
           origin,
           tokenTypeValidation: { ...tokenTypeValidationResponse },
+          clientAuthMethod,
         };
         client = await this.model.getClient(
           tokenRequest,
@@ -812,6 +819,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
           scope: scopeInBody ? [...scopeInBody] : undefined,
           origin,
           tokenTypeValidation: { ...tokenTypeValidationResponse },
+          clientAuthMethod,
         };
         client = await this.model.getClient(
           refreshTokenRequest,
@@ -847,6 +855,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
             deviceCode: deviceCodeInBody!,
             origin,
             tokenTypeValidation: { ...tokenTypeValidationResponse },
+            clientAuthMethod,
           }
           : {
             client,
@@ -857,6 +866,7 @@ export abstract class AbstractDeviceAuthorizationFlow extends OAuth2Flow
             scope: scopeInBody,
             origin,
             tokenTypeValidation: { ...tokenTypeValidationResponse },
+            clientAuthMethod,
           },
       };
     }

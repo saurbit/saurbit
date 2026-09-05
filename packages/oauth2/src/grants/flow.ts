@@ -148,6 +148,9 @@ export interface OAuth2RefreshTokenGrantContext {
   /** The result of the token type validation. */
   tokenTypeValidation: TokenTypeValidationResponse;
 
+  /** The client authentication method used for this request, if any. */
+  clientAuthMethod?: string | undefined;
+
   /** The requested scopes for the new access token, if provided. */
   scope?: string[];
 }
@@ -170,6 +173,9 @@ export interface OAuth2RefreshTokenRequest {
 
   /** The result of the token type validation. */
   tokenTypeValidation: TokenTypeValidationResponse;
+
+  /** The client authentication method used for this request, if any. */
+  clientAuthMethod?: string | undefined;
 
   /** The client secret, if the client is confidential. */
   clientSecret?: string;

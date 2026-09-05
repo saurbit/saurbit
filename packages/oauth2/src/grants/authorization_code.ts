@@ -86,6 +86,9 @@ export interface AuthorizationCodeGrantContext {
   /** The result of the token type validation. */
   tokenTypeValidation: TokenTypeValidationResponse;
 
+  /** The client authentication method used for this request, if any. */
+  clientAuthMethod?: string | undefined;
+
   /** The PKCE code verifier, if PKCE was used in the authorization request. */
   codeVerifier?: string;
 
@@ -111,6 +114,9 @@ export interface AuthorizationCodeTokenRequest {
 
   /** The result of the token type validation. */
   tokenTypeValidation: TokenTypeValidationResponse;
+
+  /** The client authentication method used for this request, if any. */
+  clientAuthMethod?: string | undefined;
 
   /** The PKCE code verifier, if PKCE was used in the authorization request. */
   codeVerifier?: string;
@@ -997,6 +1003,7 @@ export abstract class AbstractAuthorizationCodeFlow<
           redirectUri: redirectUriInBody,
           origin,
           tokenTypeValidation: { ...tokenTypeValidationResponse },
+          clientAuthMethod,
         };
         client = await this.model.getClient(
           tokenRequest,
@@ -1010,6 +1017,7 @@ export abstract class AbstractAuthorizationCodeFlow<
           scope: scopeInBody ? [...scopeInBody] : undefined,
           origin,
           tokenTypeValidation: { ...tokenTypeValidationResponse },
+          clientAuthMethod,
         };
         client = await this.model.getClient(
           refreshTokenRequest,
@@ -1047,6 +1055,7 @@ export abstract class AbstractAuthorizationCodeFlow<
             redirectUri: redirectUriInBody,
             origin,
             tokenTypeValidation: { ...tokenTypeValidationResponse },
+            clientAuthMethod,
           }
           : {
             client,
@@ -1057,6 +1066,7 @@ export abstract class AbstractAuthorizationCodeFlow<
             scope: scopeInBody,
             origin,
             tokenTypeValidation: { ...tokenTypeValidationResponse },
+            clientAuthMethod,
           },
       };
     }
