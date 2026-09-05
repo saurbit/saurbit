@@ -1,11 +1,7 @@
 // main_capk.ts for Oak framework with Client Credentials Flow and Private Key JWT authentication
 
 import { Application, Router } from "@oak/oak";
-import {
-  ClientCredentialsFlowBuilder,
-  PrivateKeyJwt,
-  PrivateKeyJwtAlgorithms,
-} from "@saurbit/oauth2";
+import { ClientCredentialsFlowBuilder, PrivateKeyJwt } from "@saurbit/oauth2";
 import { createClientAssertionJwtVerify, decodeJwt } from "@saurbit/oauth2-jwt";
 import { exportJWK, importSPKI } from "jose";
 
@@ -54,16 +50,59 @@ const flow = new ClientCredentialsFlowBuilder({
         };
       }),
     )
-      .addAlgorithm(PrivateKeyJwtAlgorithms.RS256)
-      .getPublicKeyForClient(async (clientId) => {
-        // Implement logic to retrieve the public key for the given client ID.
+      .addAlgorithm(PrivateKeyJwt.algo.RS256)
+      .getClient((clientId) => {
+        // Implement logic to retrieve the client information based on the decoded JWT and client assertion.
         if (clientId === "example-client") {
-          // Import using jose to get the CryptoKey
-          const publicKey = await importSPKI(CLIENT_PUBLIC_KEY, "RS256");
-          // Export the public key to JWK format for verification
-          const jwk = await exportJWK(publicKey);
-          return jwk;
+          return {
+            id: "example-client",
+            grants: ["client_credentials"],
+            metadata: {
+              // 1. The method used to authenticate at the token/mtls endpoints
+              // Valid spec values: "private_key_jwt", "self_signed_tls_client_auth", "client_secret_post"
+              token_endpoint_auth_method: "private_key_jwt",
+
+              // 2. The explicit algorithm restriction for this specific client
+              // Valid spec values: "RS256", "ES256", "PS256", "EdDSA"
+              token_endpoint_auth_signing_alg: "RS256",
+
+              // 3. The source of truth for the client's public keys (JWKS format)
+              // Can be a static array of keys or a remote endpoint managed by the client
+              jwks_uri: "https://example.com",
+              jwks: null,
+              publicKeyPem: CLIENT_PUBLIC_KEY,
+
+              // 4. (Optional) Subject Alternative Name matching rules for mTLS validation
+              // Used if you want to tie validation strictly to a specific domain name or cert subject
+              tls_client_auth_san_dns: "://example.com",
+              tls_client_auth_subject_dn: "CN=://example.com,O=FinancialCorp",
+            },
+          };
         }
+        return undefined;
+      })
+      .getPublicKeyForClient(async (clientId, _decoded, _clientAssertion, clientData) => {
+        // Implement logic to retrieve the public key for the given client ID.
+        try {
+          if (
+            clientId === clientData?.id &&
+            typeof clientData?.metadata?.publicKeyPem === "string" &&
+            clientData?.metadata?.token_endpoint_auth_signing_alg === PrivateKeyJwt.algo.RS256
+          ) {
+            console.log("Retrieving public key for client:", clientData.metadata);
+            // Import using jose to get the CryptoKey
+            const publicKey = await importSPKI(
+              clientData.metadata?.publicKeyPem,
+              PrivateKeyJwt.algo.ES256,
+            );
+            // Export the public key to JWK format for verification
+            const jwk = await exportJWK(publicKey);
+            return jwk;
+          }
+        } catch (err) {
+          console.error("Error retrieving public key for client:", err);
+        }
+
         return null;
       }),
   )
