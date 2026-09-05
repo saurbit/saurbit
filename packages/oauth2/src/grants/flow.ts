@@ -392,7 +392,7 @@ export abstract class OAuth2Flow {
           } else {
             clientId = v.clientId;
             clientSecret = v.clientSecret;
-            clientAuthData = v.client;
+            clientAuthData = v.clientData;
             error = v.error;
             break;
           }

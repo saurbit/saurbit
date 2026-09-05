@@ -13,6 +13,7 @@
  */
 
 import { InvalidClientError } from "../errors.ts";
+import { OAuth2Client } from "../types.ts";
 import { ClientAssertionJwtVerify, JwtDecode, JwtPayload } from "../utils/jwt_types.ts";
 import { ClientAuthMethod, ClientAuthMethodResponse } from "./types.ts";
 
@@ -82,7 +83,14 @@ export class ClientSecretJwt implements ClientAuthMethod {
     clientId: string,
     decoded: JwtPayload,
     clientAssertion: string,
+    clientData?: Partial<OAuth2Client> | undefined,
   ) => Promise<Uint8Array | string | null>;
+
+  #getClientHandler?: (
+    clientId: string,
+    decoded: JwtPayload,
+    clientAssertion: string,
+  ) => Promise<Partial<OAuth2Client> | undefined> | Partial<OAuth2Client> | undefined;
 
   /**
    * to avoid adding jose as a dependency for users who don't need JWT client authentication,
@@ -140,9 +148,29 @@ export class ClientSecretJwt implements ClientAuthMethod {
       clientId: string,
       decoded: JwtPayload,
       clientAssertion: string,
+      clientData?: Partial<OAuth2Client> | undefined,
     ) => Promise<Uint8Array | string | null>,
   ): this {
     this.#handler = handler;
+    return this;
+  }
+
+  /**
+   * Optionally retrieves the client information based on the decoded JWT and client assertion.
+   *
+   * Particularly useful when the client information is needed for further processing after JWT verification.
+   *
+   * @param handler - An async function that returns the client information or `undefined`.
+   * @returns The current `ClientSecretJwt` instance for chaining.
+   */
+  getClient(
+    handler: (
+      clientId: string,
+      decoded: JwtPayload,
+      clientAssertion: string,
+    ) => Promise<Partial<OAuth2Client> | undefined> | Partial<OAuth2Client> | undefined,
+  ): this {
+    this.#getClientHandler = handler;
     return this;
   }
 
@@ -204,7 +232,17 @@ export class ClientSecretJwt implements ClientAuthMethod {
           );
         } else {
           res.clientId = decoded.sub;
-          const clientSecret = await this.#handler(decoded.sub, decoded, body.client_assertion);
+          const clientData = await this.#getClientHandler?.(
+            decoded.sub,
+            { ...decoded },
+            body.client_assertion,
+          );
+          const clientSecret = await this.#handler(
+            decoded.sub,
+            decoded,
+            body.client_assertion,
+            clientData ? { ...clientData } : undefined,
+          );
 
           if (clientSecret) {
             try {
@@ -226,6 +264,7 @@ export class ClientSecretJwt implements ClientAuthMethod {
                 res.clientSecret = typeof clientSecret === "string"
                   ? clientSecret
                   : new TextDecoder().decode(clientSecret);
+                res.clientData = clientData;
               } else {
                 res.error = new InvalidClientError(
                   "client_secret_jwt authentication failed: invalid signature or algorithm",

@@ -45,7 +45,7 @@ export type ClientAuthMethodResponse = {
    */
   clientSecret?: string;
 
-  client?: Partial<OAuth2Client> | undefined;
+  clientData?: Partial<OAuth2Client> | undefined;
 
   /** The error encountered during extraction, if any. */
   error?: OAuth2Error | undefined;
