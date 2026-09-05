@@ -80,7 +80,7 @@ const tokenResponse = await fetch("http://localhost:8000/token", {
     "Content-Type": "application/x-www-form-urlencoded",
   },
   body: new URLSearchParams({
-    client_id: "example-clientyy",
+    client_id: "example-client",
     grant_type: "client_credentials",
     client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
     client_assertion: clientAssertion,
