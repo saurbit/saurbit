@@ -11,7 +11,8 @@
  * @see https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication
  */
 
-import { OAuth2Error } from "../errors.ts";
+import type { OAuth2Error } from "../errors.ts";
+import type { OAuth2Client } from "../types.ts";
 
 /**
  * The registered client authentication method identifiers defined by OAuth 2.0 and OIDC.
@@ -43,6 +44,8 @@ export type ClientAuthMethodResponse = {
    * For `private_key_jwt` this holds the raw JWT assertion string.
    */
   clientSecret?: string;
+
+  client?: Partial<OAuth2Client> | undefined;
 
   /** The error encountered during extraction, if any. */
   error?: OAuth2Error | undefined;

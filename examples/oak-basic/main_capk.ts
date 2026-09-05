@@ -70,6 +70,9 @@ const flow = new ClientCredentialsFlowBuilder({
   .getClient((tokenRequest) => {
     // Implement logic to retrieve and validate the client.
     // the client_assertion is verified by the PrivateKeyJwt method, so we only need to check the clientId here
+    if (tokenRequest.clientId === tokenRequest.clientAuthData?.id) {
+      return { id: "example-client", grants: tokenRequest.clientAuthData.grants || [tokenRequest.grantType], redirectUris: [] };
+    }
     if (
       tokenRequest.clientId === "example-client"
     ) {

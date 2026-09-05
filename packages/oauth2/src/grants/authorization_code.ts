@@ -86,9 +86,6 @@ export interface AuthorizationCodeGrantContext {
   /** The result of the token type validation. */
   tokenTypeValidation: TokenTypeValidationResponse;
 
-  /** The client authentication method used for this request, if any. */
-  clientAuthMethod?: string | undefined;
-
   /** The PKCE code verifier, if PKCE was used in the authorization request. */
   codeVerifier?: string;
 
@@ -117,6 +114,9 @@ export interface AuthorizationCodeTokenRequest {
 
   /** The client authentication method used for this request, if any. */
   clientAuthMethod?: string | undefined;
+
+  /** The client authentication data extracted from the request, if any. */
+  clientAuthData?: Partial<OAuth2Client> | undefined;
 
   /** The PKCE code verifier, if PKCE was used in the authorization request. */
   codeVerifier?: string;
@@ -947,7 +947,7 @@ export abstract class AbstractAuthorizationCodeFlow<
     }
 
     // Validate client authentication credentials using the registered client authentication methods
-    const { clientId, clientSecret, error, method: clientAuthMethod } = await this
+    const { clientId, clientSecret, error, method: clientAuthMethod, clientAuthData } = await this
       .extractClientCredentials(
         request.clone(),
         this.clientAuthMethods,
@@ -1004,6 +1004,7 @@ export abstract class AbstractAuthorizationCodeFlow<
           origin,
           tokenTypeValidation: { ...tokenTypeValidationResponse },
           clientAuthMethod,
+          clientAuthData,
         };
         client = await this.model.getClient(
           tokenRequest,
@@ -1018,6 +1019,7 @@ export abstract class AbstractAuthorizationCodeFlow<
           origin,
           tokenTypeValidation: { ...tokenTypeValidationResponse },
           clientAuthMethod,
+          clientAuthData,
         };
         client = await this.model.getClient(
           refreshTokenRequest,
@@ -1055,7 +1057,6 @@ export abstract class AbstractAuthorizationCodeFlow<
             redirectUri: redirectUriInBody,
             origin,
             tokenTypeValidation: { ...tokenTypeValidationResponse },
-            clientAuthMethod,
           }
           : {
             client,
@@ -1066,7 +1067,6 @@ export abstract class AbstractAuthorizationCodeFlow<
             scope: scopeInBody,
             origin,
             tokenTypeValidation: { ...tokenTypeValidationResponse },
-            clientAuthMethod,
           },
       };
     }

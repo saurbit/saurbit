@@ -60,9 +60,6 @@ export interface ClientCredentialsGrantContext {
 
   /** The result of the token type validation. */
   tokenTypeValidation: TokenTypeValidationResponse;
-
-  /** The client authentication method used for this request, if any. */
-  clientAuthMethod?: string | undefined;
 }
 
 /**
@@ -86,6 +83,9 @@ export interface ClientCredentialsTokenRequest {
 
   /** The client authentication method used for this request, if any. */
   clientAuthMethod?: string | undefined;
+
+  /** The client authentication data extracted from the request, if any. */
+  clientAuthData?: Partial<OAuth2Client> | undefined;
 
   /** The requested scopes, if provided in the request body. */
   scope?: string[];
@@ -180,7 +180,7 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
     }
 
     // Validate client authentication credentials using the registered client authentication methods
-    const { clientId, clientSecret, error, method: clientAuthMethod } = await this
+    const { clientId, clientSecret, error, method: clientAuthMethod, clientAuthData } = await this
       .extractClientCredentials(
         request.clone(),
         this.clientAuthMethods,
@@ -218,6 +218,7 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
         origin,
         tokenTypeValidation: { ...tokenTypeValidationResponse },
         clientAuthMethod,
+        clientAuthData,
       };
 
       // Validate client credentials using the model's getClient() method
@@ -258,7 +259,6 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
         accessTokenLifetime: this.accessTokenLifetime,
         origin,
         tokenTypeValidation: { ...tokenTypeValidationResponse },
-        clientAuthMethod,
       };
 
       // generate access token from client, valid scope,
