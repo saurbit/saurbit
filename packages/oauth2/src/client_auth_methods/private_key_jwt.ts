@@ -101,7 +101,7 @@ export class PrivateKeyJwt implements ClientAuthMethod {
     clientData?: Partial<OAuth2Client> | undefined,
   ) => Promise<object | null>;
 
-  #getClientHandler?: (
+  #getClientDataHandler?: (
     clientId: string,
     decoded: JwtPayload,
     clientAssertion: string,
@@ -178,14 +178,14 @@ export class PrivateKeyJwt implements ClientAuthMethod {
    * @param handler - An async function that returns the client information or `undefined`.
    * @returns The current `PrivateKeyJwt` instance for chaining.
    */
-  getClient(
+  getClientData(
     handler: (
       clientId: string,
       decoded: JwtPayload,
       clientAssertion: string,
     ) => Promise<Partial<OAuth2Client> | undefined> | Partial<OAuth2Client> | undefined,
   ): this {
-    this.#getClientHandler = handler;
+    this.#getClientDataHandler = handler;
     return this;
   }
 
@@ -248,7 +248,7 @@ export class PrivateKeyJwt implements ClientAuthMethod {
           );
         } else {
           res.clientId = decoded.sub;
-          const clientData = await this.#getClientHandler?.(
+          const clientData = await this.#getClientDataHandler?.(
             decoded.sub,
             { ...decoded },
             body.client_assertion,

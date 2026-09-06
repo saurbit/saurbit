@@ -51,7 +51,7 @@ const flow = new ClientCredentialsFlowBuilder({
       }),
     )
       .addAlgorithm(PrivateKeyJwt.algo.RS256)
-      .getClient((clientId) => {
+      .getClientData((clientId) => {
         // Implement logic to retrieve the client information based on the decoded JWT and client assertion.
         if (clientId === "example-client") {
           return {
@@ -93,7 +93,7 @@ const flow = new ClientCredentialsFlowBuilder({
             // Import using jose to get the CryptoKey
             const publicKey = await importSPKI(
               clientData.metadata?.publicKeyPem,
-              PrivateKeyJwt.algo.ES256,
+              PrivateKeyJwt.algo.RS256,
             );
             // Export the public key to JWK format for verification
             const jwk = await exportJWK(publicKey);
