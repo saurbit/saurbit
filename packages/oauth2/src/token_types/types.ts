@@ -46,9 +46,11 @@ export interface TokenType {
    * Optional - only implement when the token type requires token endpoint validation.
    *
    * @param request - The incoming token endpoint HTTP request.
+   * @param ctxt - Contextual information about the token request, such as the grant type and refresh token if applicable.
    * @returns A validation response indicating whether the request is valid.
    */
   isValidTokenRequest?: (
     request: Request,
+    ctxt: { grantType: "refresh_token"; refreshToken: string } | { grantType: string },
   ) => TokenTypeValidationResponse | Promise<TokenTypeValidationResponse>;
 }

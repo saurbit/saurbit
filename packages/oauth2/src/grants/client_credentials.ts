@@ -199,7 +199,9 @@ export abstract class AbstractClientCredentialsFlow extends OAuth2Flow
       // e.g. for DPoP token type, we need to validate the token request before validating client credentials
       const tokenTypeValidationResponse: TokenTypeValidationResponse =
         this._tokenType.isValidTokenRequest
-          ? await this._tokenType.isValidTokenRequest(request.clone())
+          ? await this._tokenType.isValidTokenRequest(request.clone(), {
+            grantType: this.grantType,
+          })
           : { isValid: true };
       if (!tokenTypeValidationResponse.isValid) {
         return {

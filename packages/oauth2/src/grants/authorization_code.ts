@@ -980,7 +980,12 @@ export abstract class AbstractAuthorizationCodeFlow<
       // e.g. for DPoP token type, we need to validate the token request before validating client credentials
       const tokenTypeValidationResponse: TokenTypeValidationResponse = this
           ._tokenType.isValidTokenRequest
-        ? await this._tokenType.isValidTokenRequest(request.clone())
+        ? await this._tokenType.isValidTokenRequest(
+          request.clone(),
+          grantTypeInBody === "refresh_token" && refreshTokenInBody
+            ? { grantType: "refresh_token", refreshToken: refreshTokenInBody }
+            : { grantType: grantTypeInBody || "" },
+        )
         : { isValid: true };
       if (!tokenTypeValidationResponse.isValid) {
         return {
