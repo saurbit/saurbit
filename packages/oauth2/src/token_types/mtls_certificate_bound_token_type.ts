@@ -2,7 +2,7 @@ import { type JwtPayload, type TokenType, type TokenTypeValidationResponse } fro
 import {
   safeArrayBufferToBase64Url,
   safeArrayBufferToHex,
-  safeBase64ToSha256Buffer,
+  safeBase64ToArrayBuffer,
 } from "../utils/methods.ts";
 
 /**
@@ -118,7 +118,8 @@ export class MtlsCertificateBoundTokenType implements TokenType {
       .replace(/-----END CERTIFICATE-----/, "")
       .replace(/\s+/g, "");
 
-    return await safeBase64ToSha256Buffer(cleanBase64);
+    // Digest via the WebCrypto API
+    return await crypto.subtle.digest("SHA-256", safeBase64ToArrayBuffer(cleanBase64));
   }
 
   /**

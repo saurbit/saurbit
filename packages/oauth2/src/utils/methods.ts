@@ -87,17 +87,16 @@ export function safeArrayBufferToHex(buffer: ArrayBuffer): string {
 }
 
 /**
- * Converts a Base64-encoded string to a SHA-256 hash ArrayBuffer.
+ * Safely converts a Base64-encoded string to an ArrayBuffer.
  * This function works in Node/Bun/Deno/Cloudflare Workers and browser environments.
  *
- * @param base64 - The Base64 string to convert to a SHA-256 hash ArrayBuffer
- * @returns A promise that resolves to the SHA-256 hash of the Base64 string as an ArrayBuffer
+ * @param base64 - The Base64 string to convert to an ArrayBuffer
+ * @returns The ArrayBuffer representation of the Base64 string
  */
-export async function safeBase64ToSha256Buffer(base64: string): Promise<ArrayBuffer> {
+export function safeBase64ToArrayBuffer(base64: string): ArrayBuffer {
   // Fast path for Node/Bun
   if (typeof Buffer !== "undefined") {
-    const derBuffer = Buffer.from(base64, "base64");
-    return await crypto.subtle.digest("SHA-256", derBuffer);
+    return Buffer.from(base64, "base64").buffer;
   }
 
   // Decode the Base64 string to a binary string
@@ -107,9 +106,7 @@ export async function safeBase64ToSha256Buffer(base64: string): Promise<ArrayBuf
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
-
-  // Digest via the WebCrypto API
-  return await crypto.subtle.digest("SHA-256", bytes.buffer);
+  return bytes.buffer;
 }
 
 /**
