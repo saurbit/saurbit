@@ -34,8 +34,8 @@
  *
  * ## Token types
  *
- * Access tokens can be validated as Bearer ({@link BearerTokenType}) or
- * DPoP ({@link DPoPTokenType}).
+ * Access tokens can be validated as Bearer ({@link BearerTokenType}),
+ * DPoP ({@link DPoPTokenType}), or mTLS ({@link MtlsCertificateBoundTokenType}).
  *
  * ## OpenID Connect
  *
@@ -185,6 +185,12 @@ export {
   type DPoPTokenTypeValidation,
   type DPoPTokenTypeValidationResponse,
 } from "./token_types/dpop_token.ts";
+export {
+  type CertificateBoundValidationResponse,
+  MtlsCertificateBoundTokenType,
+  type MtlsJwtDecode,
+  type MtlsJwtPayload,
+} from "./token_types/mtls_certificate_bound_token_type.ts";
 export type { TokenType, TokenTypeValidationResponse } from "./token_types/types.ts";
 
 //#endregion

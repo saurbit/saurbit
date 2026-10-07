@@ -45,6 +45,74 @@ function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
 }
 
 /**
+ * Safely converts an ArrayBuffer to a Base64URL string.
+ * This function works in Node/Bun/Deno/Cloudflare Workers and browser environments.
+ *
+ * @param buffer - The ArrayBuffer to convert
+ * @returns The Base64URL string representation of the ArrayBuffer
+ */
+export function safeArrayBufferToBase64Url(buffer: ArrayBuffer): string {
+  // Fast path for Node/Bun
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(buffer).toString("base64url");
+  }
+
+  // Convert the ArrayBuffer to a Base64URL string
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]!);
+  }
+
+  // Make it URL-safe: swap characters and remove padding
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+export function safeArrayBufferToHex(buffer: ArrayBuffer): string {
+  // Fast path for Node/Bun
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(buffer).toString("hex");
+  }
+
+  // Convert the ArrayBuffer to a hex string
+  const bytes = new Uint8Array(buffer);
+  let hex = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    hex += bytes[i]!.toString(16).padStart(2, "0");
+  }
+  return hex;
+}
+
+/**
+ * Converts a Base64-encoded string to a SHA-256 hash ArrayBuffer.
+ * This function works in Node/Bun/Deno/Cloudflare Workers and browser environments.
+ *
+ * @param base64 - The Base64 string to convert to a SHA-256 hash ArrayBuffer
+ * @returns A promise that resolves to the SHA-256 hash of the Base64 string as an ArrayBuffer
+ */
+export async function safeBase64ToSha256Buffer(base64: string): Promise<ArrayBuffer> {
+  // Fast path for Node/Bun
+  if (typeof Buffer !== "undefined") {
+    const derBuffer = Buffer.from(base64, "base64");
+    return await crypto.subtle.digest("SHA-256", derBuffer);
+  }
+
+  // Decode the Base64 string to a binary string
+  const binaryString = atob(base64);
+  // Convert the binary string to an ArrayBuffer
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  // Digest via the WebCrypto API
+  return await crypto.subtle.digest("SHA-256", bytes.buffer);
+}
+
+/**
  * Generates the access token hash (ath) for a given access token.
  * The hash is computed using SHA-256 and then base64url-encoded.
  *
