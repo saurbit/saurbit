@@ -24,6 +24,7 @@ export type TokenEndpointAuthMethod =
   | "client_secret_post"
   | "client_secret_jwt"
   | "private_key_jwt"
+  | "tls_client_auth"
   | "none";
 
 /**
@@ -90,4 +91,16 @@ export interface ClientAuthMethod {
   extractClientCredentials(
     request: Request,
   ): Promise<ClientAuthMethodResponse> | ClientAuthMethodResponse;
+}
+
+/**
+ * The values of HTTP headers used in TLS client authentication.
+ */
+export interface TlsClientAuthHeadersValues {
+  cert: string;
+  certVerify: string;
+  certDn?: string;
+  certSan?: string;
+  certExpire?: string;
+  additionalHeaders?: Record<string, string>;
 }

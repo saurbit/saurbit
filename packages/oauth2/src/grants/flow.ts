@@ -279,6 +279,7 @@ export abstract class OAuth2Flow {
     client_secret_post: undefined,
     client_secret_jwt: undefined,
     private_key_jwt: undefined,
+    tls_client_auth: undefined,
     none: undefined,
   };
 
@@ -298,6 +299,7 @@ export abstract class OAuth2Flow {
       client_secret_post: undefined,
       client_secret_jwt: undefined,
       private_key_jwt: undefined,
+      tls_client_auth: undefined,
       none: undefined,
     };
 

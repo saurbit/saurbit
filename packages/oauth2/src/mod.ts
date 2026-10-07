@@ -75,9 +75,15 @@ export {
   ClientSecretJwtAlgorithms,
 } from "./client_auth_methods/client_secret_jwt.ts";
 export { PrivateKeyJwt, PrivateKeyJwtAlgorithms } from "./client_auth_methods/private_key_jwt.ts";
+export {
+  type TlsClientAuthHandler,
+  TlsClientAuthMethod,
+  type TlsClientAuthOptions,
+} from "./client_auth_methods/tls_client_auth.ts";
 export type {
   ClientAuthMethod,
   ClientAuthMethodResponse,
+  TlsClientAuthHeadersValues,
   TokenEndpointAuthMethod,
 } from "./client_auth_methods/types.ts";
 
