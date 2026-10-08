@@ -16,6 +16,7 @@ import { InvalidClientError } from "../errors.ts";
 import { OAuth2Client } from "../types.ts";
 import { ClientAssertionJwtVerify, JwtDecode, JwtPayload } from "../utils/jwt_types.ts";
 import { ClientAuthMethod, ClientAuthMethodResponse } from "./types.ts";
+import { getUnverifiedJwtAlg } from "./utils.ts";
 
 /**
  * HMAC signing algorithms supported by the `client_secret_jwt` authentication method.
@@ -185,6 +186,12 @@ export class ClientSecretJwt implements ClientAuthMethod {
    *
    * Supports `application/x-www-form-urlencoded` and `application/json` content types.
    *
+   * Before claiming the request, the assertion's (unverified) `alg` header is
+   * checked against {@link ClientSecretJwt.algorithms}. If it doesn't match (e.g. the
+   * assertion was signed with an asymmetric algorithm intended for `private_key_jwt`),
+   * this method reports `hasAuthMethod: false` so another registered JWT-bearer
+   * method can attempt the same request instead of failing outright.
+   *
    * @param req - The incoming HTTP request.
    * @returns The extracted client credentials, or `{ hasAuthMethod: false }` if the
    *   request does not contain a valid JWT client assertion.
@@ -220,6 +227,15 @@ export class ClientSecretJwt implements ClientAuthMethod {
       "client_assertion" in body &&
       typeof body.client_assertion === "string"
     ) {
+      // Disambiguate from other JWT-bearer client authentication methods (e.g.
+      // `private_key_jwt`) by inspecting the assertion's unverified `alg` header.
+      // The signature itself is still verified below via `#jwtVerify`, restricted
+      // to `this.algorithms`. This check only affects which method claims the request.
+      const alg = getUnverifiedJwtAlg(body.client_assertion);
+      if (alg !== undefined && !(this.algorithms as string[]).includes(alg)) {
+        return res;
+      }
+
       res.hasAuthMethod = true;
 
       const decoded = await this.#jwtDecode(body.client_assertion);

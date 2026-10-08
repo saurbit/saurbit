@@ -9,23 +9,7 @@
  */
 
 import { ClientAuthMethod, ClientAuthMethodResponse } from "./types.ts";
-
-// Fast path for Node/Bun
-declare const Buffer: {
-  from(input: string, encoding: string): { toString(encoding: string): string };
-};
-
-function decodeBase64(b64: string): string {
-  // Fast path for Node/Bun
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(b64, "base64").toString("utf8");
-  }
-
-  // Universal Web API path
-  const binary = atob(b64);
-  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
-}
+import { decodeBase64 } from "./utils.ts";
 
 /**
  * {@link ClientAuthMethod} implementation for the `client_secret_basic` authentication method.
