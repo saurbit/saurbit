@@ -20,12 +20,12 @@
     "jsr:@std/path@^1.1.4": "1.1.4",
     "jsr:@ts-morph/bootstrap@0.27": "0.27.0",
     "jsr:@ts-morph/common@0.27": "0.27.0",
-    "npm:@hono/standard-validator@0.4": "0.4.0_hono@4.13.7",
-    "npm:@hono/swagger-ui@~0.6.1": "0.6.1_hono@4.13.7",
+    "npm:@hono/standard-validator@0.4": "0.4.0_hono@4.13.13",
+    "npm:@hono/swagger-ui@~0.6.1": "0.6.1_hono@4.13.13",
     "npm:arktype@^2.2.3": "2.2.3",
-    "npm:hono-openapi@^1.3.1": "1.3.1_@hono+standard-validator@0.4.0__hono@4.13.7_hono@4.13.7_openapi-types@12.1.3",
-    "npm:hono@4": "4.13.7",
-    "npm:hono@^4.13.7": "4.13.7",
+    "npm:hono-openapi@^1.3.1": "1.3.1_@hono+standard-validator@0.4.0__hono@4.13.13_hono@4.13.13_openapi-types@12.1.3",
+    "npm:hono@4": "4.13.13",
+    "npm:hono@^4.13.13": "4.13.13",
     "npm:jose@^6.2.12": "6.2.12",
     "npm:openapi-types@^12.1.3": "12.1.3",
     "npm:path-to-regexp@^6.3.0": "6.3.0"
@@ -134,14 +134,14 @@
     "@ark/util@0.56.2": {
       "integrity": "sha512-9kU2sUE38FZEGG7l3hamYMBieLYEJh2L1mrYD2eXpT+78EnQSV1bhjxJhnxGBMSTbtwpBSDNSK+K60WvaI/DTQ=="
     },
-    "@hono/standard-validator@0.4.0_hono@4.13.7": {
+    "@hono/standard-validator@0.4.0_hono@4.13.13": {
       "integrity": "sha512-MxOm1asDh9j7c1D0KiWwppSbFgAQxTRO4YEhjMrJn3lF1BIcXenPdgjSGKDRfQmZdaTaMA8slQLETgVOKyJxFw==",
       "dependencies": [
         "@standard-schema/spec",
         "hono"
       ]
     },
-    "@hono/swagger-ui@0.6.1_hono@4.13.7": {
+    "@hono/swagger-ui@0.6.1_hono@4.13.13": {
       "integrity": "sha512-sJTvldu1GPeEPfyeLG7gRj+W4vEuD+JDi+JjJ3TJs/DvMUtBLs0KJO5yokGegWWdy5qrbdnQGekbhgNRmPmYKQ==",
       "dependencies": [
         "hono"
@@ -159,7 +159,7 @@
         "arktype"
       ]
     },
-    "@standard-community/standard-openapi@0.2.9_@standard-community+standard-json@0.3.5__@standard-schema+spec@1.1.0__@types+json-schema@7.0.15__arktype@2.2.3__quansync@0.2.11_@standard-schema+spec@1.1.0_arktype@2.2.3_openapi-types@12.1.3_@types+json-schema@7.0.15_quansync@0.2.11": {
+    "@standard-community/standard-openapi@0.2.9_@standard-community+standard-json@0.3.5_@standard-schema+spec@1.1.0_arktype@2.2.3_openapi-types@12.1.3_@types+json-schema@7.0.15_quansync@0.2.11": {
       "integrity": "sha512-htj+yldvN1XncyZi4rehbf9kLbu8os2Ke/rfqoZHCMHuw34kiF3LP/yQPdA0tQ940y8nDq3Iou8R3wG+AGGyvg==",
       "dependencies": [
         "@standard-community/standard-json",
@@ -191,7 +191,7 @@
         "arkregex"
       ]
     },
-    "hono-openapi@1.3.1_@hono+standard-validator@0.4.0__hono@4.13.7_hono@4.13.7_openapi-types@12.1.3": {
+    "hono-openapi@1.3.1_@hono+standard-validator@0.4.0__hono@4.13.13_hono@4.13.13_openapi-types@12.1.3": {
       "integrity": "sha512-NLVeVkhKZ3drmQNEIPac8HX8Y54uf1hJAgIM/7MfDsaeVVmB+QILWQxx5x3R3NvRHgedcbEbOCGY2uR7WQYyMw==",
       "dependencies": [
         "@hono/standard-validator",
@@ -206,8 +206,8 @@
         "hono"
       ]
     },
-    "hono@4.13.7": {
-      "integrity": "sha512-c8/gF9ac8Y78/agExVocyLevgR+JlpNB444Py0FSX8pJoPdYUfUzRcXtYEYGwt6l19qIlVZPN5Mfsw9jFShmQQ=="
+    "hono@4.13.13": {
+      "integrity": "sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA=="
     },
     "jose@6.2.12": {
       "integrity": "sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw=="
@@ -243,7 +243,7 @@
       "packages/hono-oauth2": {
         "dependencies": [
           "jsr:@std/assert@^1.0.19",
-          "npm:hono@^4.13.7"
+          "npm:hono@^4.13.13"
         ]
       },
       "packages/oauth2": {
