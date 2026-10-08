@@ -4,11 +4,15 @@ import type {
   JwkVerify,
   JwtDecode,
   JwtVerify,
+  SelfSignedTlsClientAuthAlgorithms,
+  TrustedJwks,
 } from "@saurbit/oauth2";
 import {
   calculateJwkThumbprint as joseCalculateJwkThumbprint,
   decodeJwt as joseDecodeJwt,
+  exportJWK,
   importJWK,
+  importX509,
   jwtVerify,
 } from "jose";
 import { JwtClaimVerificationOptions } from "./types.ts";
@@ -201,3 +205,62 @@ export function createDPoPJwkVerify(config: DPoPJwkVerifierConfig): JwkVerify {
 export const calculateJwkThumbprint: JwkThumbprintCalculator = (jwk) => {
   return joseCalculateJwkThumbprint(jwk, "sha256");
 };
+
+/**
+ * Verifies that an incoming self-signed TLS client certificate matches a trusted key in the JWKS.
+ *
+ * Not really used anywhere in the current implementation.
+ *
+ * This function implements certificate-based client authentication by:
+ * 1. Extracting the client certificate from the PEM-encoded format
+ * 2. Scanning the trusted JWKS for a matching public key
+ * 3. Enforcing the allowed signature algorithms whitelist
+ * 4. Performing cryptographic comparison of the certificate against trusted keys
+ *
+ * @param rawIncomingPem - The PEM-encoded X.509 certificate from the client
+ * @param trustedJwks - The set of trusted public keys (JWKS) to validate against
+ * @param algorithms - Whitelist of allowed signature algorithms for verification
+ * @returns `true` if the certificate matches a trusted key and uses an allowed algorithm, `false` otherwise
+ * @throws If JWKS parsing or key import fails unexpectedly
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8705 - OAuth 2.0 Mutual-TLS Client Authentication
+ */
+export async function verifySelfSignedTlsClientCertificate(
+  rawIncomingPem: string,
+  trustedJwks: TrustedJwks,
+  algorithms: SelfSignedTlsClientAuthAlgorithms[],
+): Promise<boolean> {
+  let isAuthorized = false;
+  // Scan the JWKS for a matching cryptographic key
+  for (const key of trustedJwks.keys) {
+    if (Array.isArray(key.x5c) && key.x5c.length > 0) {
+      try {
+        // Enforce your algorithm whitelist rules early
+        // (jose allows you to read or infer algorithm properties cleanly)
+        const algToCheck = key.alg ||
+          (key.kty === "RSA" ? "RS256" : key.kty === "EC" ? "ES256" : "EdDSA");
+        if (!algorithms.includes(algToCheck as SelfSignedTlsClientAuthAlgorithms)) continue;
+
+        // Let 'jose' dynamically import the JWK entry into a runtime KeyObject
+        const jwksKeyObject = await importJWK(key, algToCheck);
+
+        // Let 'jose' dynamically import the incoming raw client certificate string
+        const clientKeyObject = await importX509(rawIncomingPem, algToCheck);
+
+        // Direct cryptographic object comparison
+        // jose normalizes the underlying keys, allowing a safe, standard check
+        if (
+          JSON.stringify(await exportJWK(clientKeyObject)) ===
+            JSON.stringify(await exportJWK(jwksKeyObject))
+        ) {
+          isAuthorized = true;
+          break;
+        }
+      } catch (_err) {
+        // Fall through to the next key if a structural decoding error occurs
+        continue;
+      }
+    }
+  }
+  return isAuthorized;
+}

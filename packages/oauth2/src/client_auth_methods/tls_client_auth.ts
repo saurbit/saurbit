@@ -71,7 +71,7 @@ export interface TlsClientAuthOptions {
  */
 export class TlsClientAuthMethod implements ClientAuthMethod {
   // RFC 8705 official registered name
-  readonly method: TokenEndpointAuthMethod = "tls_client_auth" as TokenEndpointAuthMethod;
+  readonly method: TokenEndpointAuthMethod = "tls_client_auth";
 
   // mTLS relies on private key possession, not a symmetric client secret
   // But we still need to extract the client certificate as a secret equivalent for validation.
@@ -180,7 +180,7 @@ export class TlsClientAuthMethod implements ClientAuthMethod {
       return { hasAuthMethod: false };
     }
 
-    // Look for the TLS client certificate forwarded by your reverse proxy
+    // Look for the TLS client certificate forwarded by the reverse proxy
     const clientCertPem = request.headers.get(this.#certHeaderName);
     const clientCertVerify = request.headers.get(this.#certVerifyHeaderName);
     const clientCertDn = request.headers.get(this.#certDnHeaderName);

@@ -80,6 +80,13 @@ export {
   TlsClientAuthMethod,
   type TlsClientAuthOptions,
 } from "./client_auth_methods/tls_client_auth.ts";
+export {
+  SelfSignedTlsClientAuthAlgorithms,
+  SelfSignedTlsClientAuthMethod,
+  type SelfSignedTlsClientAuthOptions,
+  type TrustedJwks,
+  type TrustedJwksHandler,
+} from "./client_auth_methods/self_signed_tls_client_auth.ts";
 export type {
   ClientAuthMethod,
   ClientAuthMethodResponse,

@@ -25,6 +25,7 @@ export type TokenEndpointAuthMethod =
   | "client_secret_jwt"
   | "private_key_jwt"
   | "tls_client_auth"
+  | "self_signed_tls_client_auth"
   | "none";
 
 /**

@@ -14,6 +14,7 @@ export {
   verifyClientAssertionJwt,
   verifyJwk,
   verifyJwt,
+  verifySelfSignedTlsClientCertificate,
 } from "./methods.ts";
 
 export type {
