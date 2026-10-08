@@ -155,10 +155,21 @@ export class TlsClientAuthMethod implements ClientAuthMethod {
     return this;
   }
 
+  /**
+   * Creates a {@link MtlsCertificateBoundTokenType} configured to reuse this method's
+   * client certificate header, so issued access (and optionally refresh) tokens can be
+   * bound to the same client certificate used here.
+   *
+   * @param decodeTokenPayload - Callback to decode/verify the JWT access token payload.
+   * @param boundRefreshToken - Indicates whether the refresh token should also be bound
+   *   to the client certificate (default: `false`).
+   * @returns A new `MtlsCertificateBoundTokenType` instance using this method's
+   *   `certHeaderName`.
+   */
   createCertificateBoundTokenType(
     decodeTokenPayload: JwtDecode,
     boundRefreshToken: boolean = false,
-  ) {
+  ): MtlsCertificateBoundTokenType {
     return new MtlsCertificateBoundTokenType(
       decodeTokenPayload,
       boundRefreshToken,
