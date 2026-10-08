@@ -43,6 +43,10 @@ export interface TlsClientAuthOptions {
   certExpireHeaderName?: string;
   additionalHeadersNames?: string[];
   validateClientSubject?: TlsClientAuthHandler;
+  getClientData?: (
+    clientId: string,
+    headers: TlsClientAuthHeadersValues,
+  ) => Promise<Partial<OAuth2Client> | undefined> | Partial<OAuth2Client> | undefined;
 }
 
 /**
@@ -110,6 +114,7 @@ export class TlsClientAuthMethod implements ClientAuthMethod {
     this.#additionalHeadersNames = options.additionalHeadersNames ?? [];
 
     this.#handler = options.validateClientSubject ?? (() => Promise.resolve(false));
+    this.#getClientDataHandler = options.getClientData;
   }
 
   /**
