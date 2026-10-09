@@ -321,7 +321,7 @@ export class SelfSignedTlsClientAuthMethod implements ClientAuthMethod {
             // Skip if the algorithm is unknown or explicitly not supported by the rules
             if (
               !detectedAlg ||
-              !this.#algorithms.includes(detectedAlg as SelfSignedTlsClientAuthAlgorithms)
+              !this.algorithms.includes(detectedAlg as SelfSignedTlsClientAuthAlgorithms)
             ) {
               continue;
             }
