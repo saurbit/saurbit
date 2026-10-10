@@ -239,11 +239,13 @@ export class MtlsCertificateBoundTokenType implements TokenType {
    * Applies the mTLS binding to the given JWT claims by adding the certificate thumbprint to the `cnf` claim.
    *
    * @param claims - The JWT claims object to which the mTLS certificate thumbprint will be added.
-   * @param pemOrThumbprint - The PEM-encoded client certificate or the precomputed base64url-encoded SHA-256 thumbprint.
+   * @param pemOrThumbprint - The PEM-encoded client certificate (plain or URL-encoded) or the precomputed base64url-encoded SHA-256 thumbprint.
    * @returns The updated JWT claims object with the mTLS binding applied.
    */
   async applyBinding(claims: JwtPayload, pemOrThumbprint: string): Promise<JwtPayload> {
-    const { x5tS256 } = pemOrThumbprint.includes("-----BEGIN CERTIFICATE-----")
+    const isPem = pemOrThumbprint.includes("-----BEGIN CERTIFICATE-----") ||
+      pemOrThumbprint.includes("-----BEGIN%20CERTIFICATE-----");
+    const { x5tS256 } = isPem
       ? await this.computeThumbprint(pemOrThumbprint)
       : { x5tS256: pemOrThumbprint };
     return this.addThumbprintToCnfClaim(claims, x5tS256);
