@@ -22,17 +22,25 @@ export type MtlsJwtPayload = JwtPayload & { cnf?: { "x5t#S256"?: string } };
 
 /**
  * A function that decodes a JWT string into its payload.
+ * Optionnally considers whether the token is a refresh token if the `isRefreshToken` flag is set to `true`.
  *
- * @param jwt - The compact serialized JWT string to decode.
+ * @param token - The compact serialized JWT string to decode or the refresh token.
+ * @param isRefreshToken - Indicates whether the token being decoded is a refresh token.
  * @returns The decoded payload, synchronously or as a Promise.
  */
-export type MtlsJwtDecode = (jwt: string) => MtlsJwtPayload | Promise<MtlsJwtPayload>;
+export type MtlsJwtDecode = (
+  token: string,
+  isRefreshToken: boolean,
+) => MtlsJwtPayload | Promise<MtlsJwtPayload>;
 
 /**
  * {@link TokenType} implementation for the mTLS (Mutual TLS) token scheme.
  *
  * Validates mTLS-bound access tokens on both the token endpoint and protected resource endpoints,
  * ensuring that the presenting client certificate matches the token binding.
+ *
+ * Refresh tokens can also be bound to the client certificate if configured accordingly,
+ * useful for public clients using mTLS for enhanced security.
  *
  * @see https://datatracker.ietf.org/doc/html/rfc8705
  */
@@ -62,6 +70,8 @@ export class MtlsCertificateBoundTokenType implements TokenType {
    *
    * @param decodeTokenPayload - Callback to decode/verify your JWT token payload.
    * @param boundRefreshToken - Indicates whether the refresh token should be bound to the client certificate (default: false).
+   *   If set to `true`, `decodeTokenPayload` will be invoked at the time of decoding the refresh token and will receive the
+   *   `isRefreshToken` flag as `true`.
    * @param certHeaderName - The HTTP header name where the client certificate is expected (default: "x-ssl-client-cert").
    */
   constructor(
@@ -72,36 +82,6 @@ export class MtlsCertificateBoundTokenType implements TokenType {
     this.#decodeTokenPayload = decodeTokenPayload;
     this.#boundRefreshToken = boundRefreshToken;
     this.#certHeaderName = certHeaderName;
-  }
-
-  /**
-   * Validates the token request at the token endpoint,
-   * ensuring that any required mTLS-bound refresh token is properly presented
-   * and verified.
-   *
-   * @param request - The incoming token endpoint HTTP request.
-   * @param ctxt - Contextual information about the token request, such as the grant type and refresh token if applicable.
-   * @returns A validation response indicating whether the request is valid.
-   */
-  async isValidTokenRequest(
-    request: Request,
-    ctxt: { grantType: string; refreshToken?: string },
-  ): Promise<CertificateBoundValidationResponse> {
-    // It should only validate the token request if refresh token binding is required
-    // and if grant type is refresh token.
-    if (this.#boundRefreshToken && ctxt.grantType === "refresh_token") {
-      if (ctxt.refreshToken) {
-        // Refresh token binding validation
-        return await this.isValid(request, ctxt.refreshToken);
-      } else {
-        return {
-          isValid: false,
-          message: "Refresh token is missing.",
-        };
-      }
-    }
-
-    return { isValid: true };
   }
 
   /**
@@ -122,14 +102,11 @@ export class MtlsCertificateBoundTokenType implements TokenType {
     return await crypto.subtle.digest("SHA-256", safeBase64ToArrayBuffer(cleanBase64));
   }
 
-  /**
-   * Validates the mTLS client certificate on an incoming protected resource request.
-   *
-   * @param request - The incoming HTTP request.
-   * @param token - The mTLS-bound access token extracted from the `Authorization` header.
-   * @returns A validation response indicating whether the proof and token are valid.
-   */
-  async isValid(request: Request, token: string): Promise<CertificateBoundValidationResponse> {
+  private async handleRequest(
+    request: Request,
+    token: string,
+    isRefreshToken: boolean,
+  ): Promise<CertificateBoundValidationResponse> {
     if (!token) {
       return {
         isValid: false,
@@ -147,7 +124,7 @@ export class MtlsCertificateBoundTokenType implements TokenType {
       }
 
       // Decode the JWT payload
-      const payload = await this.#decodeTokenPayload(token);
+      const payload = await this.#decodeTokenPayload(token, isRefreshToken);
       const cnf = payload?.cnf;
 
       // Confirm the token contains the sender-constrained confirmation claim
@@ -182,6 +159,47 @@ export class MtlsCertificateBoundTokenType implements TokenType {
         }`,
       };
     }
+  }
+
+  /**
+   * Validates the token request at the token endpoint,
+   * ensuring that any required mTLS-bound refresh token is properly presented
+   * and verified.
+   *
+   * @param request - The incoming token endpoint HTTP request.
+   * @param ctxt - Contextual information about the token request, such as the grant type and refresh token if applicable.
+   * @returns A validation response indicating whether the request is valid.
+   */
+  async isValidTokenRequest(
+    request: Request,
+    ctxt: { grantType: string; refreshToken?: string },
+  ): Promise<CertificateBoundValidationResponse> {
+    // It should only validate the token request if refresh token binding is required
+    // and if grant type is refresh token.
+    if (this.#boundRefreshToken && ctxt.grantType === "refresh_token") {
+      if (ctxt.refreshToken) {
+        // Refresh token binding validation
+        return await this.handleRequest(request, ctxt.refreshToken, true);
+      } else {
+        return {
+          isValid: false,
+          message: "Refresh token is missing.",
+        };
+      }
+    }
+
+    return { isValid: true };
+  }
+
+  /**
+   * Validates the mTLS client certificate on an incoming protected resource request.
+   *
+   * @param request - The incoming HTTP request.
+   * @param token - The mTLS-bound access token extracted from the `Authorization` header.
+   * @returns A validation response indicating whether the proof and token are valid.
+   */
+  async isValid(request: Request, token: string): Promise<CertificateBoundValidationResponse> {
+    return await this.handleRequest(request, token, false);
   }
 
   /**

@@ -10,13 +10,15 @@
  *
  * @see https://datatracker.ietf.org/doc/html/rfc8705
  */
-import { TlsClientAuthHeadersValues } from "./types.ts";
+import { MtlsCertificateBoundTokenType } from "../token_types/mtls_certificate_bound_token_type.ts";
+import type { OAuth2Client } from "../types.ts";
+import type { JwtDecode } from "../utils/jwt_types.ts";
+import type { TlsClientAuthHeadersValues } from "./types.ts";
 import type {
   ClientAuthMethod,
   ClientAuthMethodResponse,
-  OAuth2Client,
   TokenEndpointAuthMethod,
-} from "@saurbit/oauth2";
+} from "./types.ts";
 
 const ALG_MAPPING: Record<string, { name: string; hash?: string; namedCurve?: string }> = {
   // RSA Configurations
@@ -212,6 +214,30 @@ export class SelfSignedTlsClientAuthMethod implements ClientAuthMethod {
   ): this {
     this.#getClientDataHandler = handler;
     return this;
+  }
+
+  /**
+   * Creates a {@link MtlsCertificateBoundTokenType} configured to reuse this method's
+   * client certificate header, so issued access (and optionally refresh) tokens can be
+   * bound to the same client certificate used here.
+   *
+   * @param decodeTokenPayload - Callback to decode/verify the JWT access token payload.
+   * @param boundRefreshToken - Indicates whether the refresh token should also be bound
+   *   to the client certificate (default: `false`).
+   *   If set to `true`, `decodeTokenPayload` will be invoked at the time of decoding the
+   *   refresh token and will receive the `isRefreshToken` flag as `true`.
+   * @returns A new `MtlsCertificateBoundTokenType` instance using this method's
+   *   `certHeaderName`.
+   */
+  createCertificateBoundTokenType(
+    decodeTokenPayload: JwtDecode,
+    boundRefreshToken: boolean = false,
+  ): MtlsCertificateBoundTokenType {
+    return new MtlsCertificateBoundTokenType(
+      decodeTokenPayload,
+      boundRefreshToken,
+      this.#certHeaderName,
+    );
   }
 
   /**

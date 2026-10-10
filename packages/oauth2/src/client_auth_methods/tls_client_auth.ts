@@ -12,14 +12,14 @@
  */
 
 import { MtlsCertificateBoundTokenType } from "../token_types/mtls_certificate_bound_token_type.ts";
-import { TlsClientAuthHeadersValues } from "./types.ts";
+import type { OAuth2Client } from "../types.ts";
+import type { JwtDecode } from "../utils/jwt_types.ts";
+import type { TlsClientAuthHeadersValues } from "./types.ts";
 import type {
   ClientAuthMethod,
   ClientAuthMethodResponse,
-  JwtDecode,
-  OAuth2Client,
   TokenEndpointAuthMethod,
-} from "@saurbit/oauth2";
+} from "./types.ts";
 
 /**
  * Handler function type for validating the client certificate in TLS client authentication.
@@ -163,6 +163,8 @@ export class TlsClientAuthMethod implements ClientAuthMethod {
    * @param decodeTokenPayload - Callback to decode/verify the JWT access token payload.
    * @param boundRefreshToken - Indicates whether the refresh token should also be bound
    *   to the client certificate (default: `false`).
+   *   If set to `true`, `decodeTokenPayload` will be invoked at the time of decoding the
+   *   refresh token and will receive the `isRefreshToken` flag as `true`.
    * @returns A new `MtlsCertificateBoundTokenType` instance using this method's
    *   `certHeaderName`.
    */
