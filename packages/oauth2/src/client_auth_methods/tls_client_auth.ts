@@ -11,9 +11,11 @@
  * @see https://datatracker.ietf.org/doc/html/rfc8705
  */
 
-import { MtlsCertificateBoundTokenType } from "../token_types/mtls_certificate_bound_token_type.ts";
+import {
+  MtlsCertificateBoundTokenType,
+  type MtlsJwtDecode,
+} from "../token_types/mtls_certificate_bound_token_type.ts";
 import type { OAuth2Client } from "../types.ts";
-import type { JwtDecode } from "../utils/jwt_types.ts";
 import type { TlsClientAuthHeadersValues } from "./types.ts";
 import type {
   ClientAuthMethod,
@@ -169,7 +171,7 @@ export class TlsClientAuthMethod implements ClientAuthMethod {
    *   `certHeaderName`.
    */
   createCertificateBoundTokenType(
-    decodeTokenPayload: JwtDecode,
+    decodeTokenPayload: MtlsJwtDecode,
     boundRefreshToken: boolean = false,
   ): MtlsCertificateBoundTokenType {
     return new MtlsCertificateBoundTokenType(
