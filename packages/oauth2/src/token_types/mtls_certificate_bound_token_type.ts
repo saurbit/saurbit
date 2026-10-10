@@ -31,7 +31,7 @@ export type MtlsJwtPayload = JwtPayload & { cnf?: { "x5t#S256"?: string } };
 export type MtlsJwtDecode = (
   token: string,
   isRefreshToken: boolean,
-) => MtlsJwtPayload | Promise<MtlsJwtPayload>;
+) => Promise<MtlsJwtPayload | undefined> | MtlsJwtPayload | undefined;
 
 /**
  * {@link TokenType} implementation for the mTLS (Mutual TLS) token scheme.
@@ -125,8 +125,14 @@ export class MtlsCertificateBoundTokenType implements TokenType {
 
       // Decode the JWT payload
       const payload = await this.#decodeTokenPayload(token, isRefreshToken);
-      const cnf = payload?.cnf;
+      if (!payload) {
+        return {
+          isValid: false,
+          message: "Failed to decode token payload.",
+        };
+      }
 
+      const cnf = payload?.cnf;
       // Confirm the token contains the sender-constrained confirmation claim
       if (!(cnf && typeof cnf === "object" && "x5t#S256" in cnf && cnf["x5t#S256"])) {
         return {

@@ -119,7 +119,7 @@ export interface TrustedJwksHandler {
     clientId: string,
     headers: TlsClientAuthHeadersValues,
     clientData?: Partial<OAuth2Client> | undefined,
-  ): TrustedJwks | Promise<TrustedJwks>;
+  ): Promise<TrustedJwks | undefined> | TrustedJwks | undefined;
 }
 
 export interface SelfSignedTlsClientAuthOptions {
