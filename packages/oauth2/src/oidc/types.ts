@@ -47,6 +47,18 @@ export interface OIDCFlow extends OAuth2Flow {
    * @see https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
    */
   getDiscoveryConfiguration(req?: Request): Record<string, string | string[] | undefined>;
+
+  /**
+   * Returns the discovery document URL.
+   * @returns The discovery URL.
+   */
+  getDiscoveryUrl(): string;
+
+  /**
+   * Returns the JWKS endpoint URL.
+   * @returns The JWKS endpoint URL.
+   */
+  getJwksEndpoint(): string | undefined;
 }
 
 /**
